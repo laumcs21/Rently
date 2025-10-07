@@ -6,7 +6,6 @@ import com.Rently.Persistence.Entity.Rol;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -16,9 +15,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
 @Transactional
-public class AdminServiceImplIntegrationTest {
+public class AdminServiceImplIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private AdministradorService administradorService;

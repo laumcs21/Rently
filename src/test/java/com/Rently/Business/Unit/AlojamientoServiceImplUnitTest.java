@@ -148,6 +148,7 @@ class AlojamientoServiceImplUnitTest {
         updated.setId(validId);
         updated.setTitulo("Casa Actualizada");
 
+        when(alojamientoDAO.buscarPorId(validId)).thenReturn(Optional.of(validAlojamiento));
         when(alojamientoDAO.actualizar(eq(validId), any(AlojamientoDTO.class)))
                 .thenReturn(Optional.of(updated));
 
@@ -169,6 +170,7 @@ class AlojamientoServiceImplUnitTest {
     @Test
     @DisplayName("DELETE - id válido debe eliminar")
     void deleteAlojamiento_ValidId_ShouldDelete() {
+        when(alojamientoDAO.buscarPorId(validId)).thenReturn(Optional.of(validAlojamiento));
         when(alojamientoDAO.eliminar(validId)).thenReturn(true);
         boolean res = alojamientoService.delete(validId);
         assertThat(res).isTrue();
