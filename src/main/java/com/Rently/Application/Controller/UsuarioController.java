@@ -1,4 +1,4 @@
-package com.Rently.Application.Controller;
+﻿package com.Rently.Application.Controller;
 
 import java.math.BigDecimal;
 import java.net.URI;
@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +24,10 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import com.Rently.Business.DTO.AlojamientoDTO;
 import com.Rently.Business.DTO.ComentarioDTO;
 import com.Rently.Business.DTO.ReservaDTO;
+import com.Rently.Business.DTO.Auth.AuthRequest;
+import com.Rently.Business.DTO.Auth.AuthResponse;
 import com.Rently.Business.DTO.UsuarioDTO;
+import com.Rently.Business.Service.AuthService;
 import com.Rently.Business.Service.UsuarioService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +36,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.security.core.AuthenticationException;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -39,9 +44,11 @@ import jakarta.validation.Valid;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+    private final AuthService authService;
 
-    public UsuarioController(UsuarioService usuarioService) {
+    public UsuarioController(UsuarioService usuarioService, AuthService authService) {
         this.usuarioService = usuarioService;
+        this.authService = authService;
     }
 
     // ---------------- CRUD de Usuarios ----------------
@@ -108,17 +115,46 @@ public class UsuarioController {
 
     // ---------------- Autenticación ----------------
 
-    @PostMapping("/login")
     @Operation(summary = "Iniciar sesión", description = "Autentica un usuario y devuelve un token JWT")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Login exitoso"),
-            @ApiResponse(responseCode = "401", description = "Credenciales inválidas")
+            @ApiResponse(responseCode = "401", description = "Credenciales invalidas")
     })
-    public ResponseEntity<Map<String, Object>> iniciarSesion(
-            @Parameter(description = "Email del usuario", example = "user@mail.com") @RequestParam String email,
-            @Parameter(description = "Contraseña del usuario") @RequestParam String contrasena) {
-        return ResponseEntity.ok(null);
+    @PostMapping(value = "/login", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public ResponseEntity<Map<String, Object>> iniciarSesionForm(
+            @RequestParam("email") String email,
+            @RequestParam("password") String password) {
+        return procesarLogin(email, password);
     }
+
+    @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> iniciarSesionJson(@RequestBody(required = false) AuthRequest request) {
+        String email = request != null ? request.getEmail() : null;
+        String password = request != null ? request.getPassword() : null;
+        return procesarLogin(email, password);
+    }
+
+    private ResponseEntity<Map<String, Object>> procesarLogin(String email, String password) {
+        if (email == null || password == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Solicitud incorrecta"));
+        }
+
+        try {
+            AuthResponse authResponse = authService.login(
+                    AuthRequest.builder()
+                            .email(email)
+                            .password(password)
+                            .build()
+            );
+            return ResponseEntity.ok(Map.of("token", authResponse.getToken()));
+        } catch (AuthenticationException | IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Credenciales invalidas"));
+        }
+    }
+
+
 
     @PostMapping("/cambiar-contrasena")
     @Operation(summary = "Cambiar contraseña", description = "Permite al usuario cambiar su contraseña actual")

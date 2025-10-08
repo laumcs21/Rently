@@ -1,11 +1,13 @@
-package com.Rently.Business.Service.impl;
+﻿package com.Rently.Business.Service.impl;
 
 import com.Rently.Business.DTO.AdministradorDTO;
+import com.Rently.Business.Exception.InvalidRequestException;
 import com.Rently.Business.Service.AdministradorService;
 import com.Rently.Persistence.DAO.AdministradorDAO;
 import com.Rently.Persistence.Entity.Rol;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,10 +19,11 @@ import java.util.Optional;
 @Service
 @Transactional
 @Slf4j
+@RequiredArgsConstructor
 public class AdministradorServiceImpl implements AdministradorService {
 
-    @Autowired
-    private AdministradorDAO administradorDAO;
+    private final AdministradorDAO administradorDAO;
+    private final PasswordEncoder passwordEncoder;
     private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
 
 
@@ -30,7 +33,13 @@ public class AdministradorServiceImpl implements AdministradorService {
 
         validateAdminData(administradorDTO);
 
-        return administradorDAO.crearAdministrador(administradorDTO);
+        administradorDAO.buscarPorEmail(administradorDTO.getEmail()).ifPresent(existing -> {
+            throw new InvalidRequestException("Solicitud incorrecta");
+        });
+
+        String contrasenaCodificada = passwordEncoder.encode(administradorDTO.getContrasena());
+
+        return administradorDAO.crearAdministrador(administradorDTO, contrasenaCodificada);
     }
 
     @Override
@@ -102,6 +111,13 @@ public class AdministradorServiceImpl implements AdministradorService {
         }
 
         // Email válido
+        if (dto.getEmail() == null || !dto.getEmail().matches(EMAIL_REGEX)) {
+            throw new IllegalArgumentException("El email no es válido");
+        }
+
+        if (dto.getContrasena() == null || dto.getContrasena().trim().isEmpty()) {
+            throw new IllegalArgumentException("La contraseña es obligatoria");
+        }
         if (dto.getEmail() == null || !dto.getEmail().matches(EMAIL_REGEX)) {
             throw new IllegalArgumentException("El email no es válido");
         }

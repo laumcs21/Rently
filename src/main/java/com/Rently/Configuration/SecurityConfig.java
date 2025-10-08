@@ -3,7 +3,7 @@ package com.Rently.Configuration;
 import org.springframework.http.HttpMethod;
 import com.Rently.Configuration.Security.JwtAuthenticationFilter;
 import com.Rently.Configuration.Security.JwtService;
-import com.Rently.Persistence.Repository.UsuarioRepository;
+import com.Rently.Persistence.Repository.PersonaRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.boot.autoconfigure.graphql.GraphQlProperties.Http;
@@ -33,7 +33,7 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final UsuarioRepository usuarioRepository;
+    private final PersonaRepository personaRepository;
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService,
@@ -59,9 +59,10 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/anfitriones").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/administradores").permitAll()
+                        .requestMatchers("/api/usuarios/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/usuarios", "/api/usuarios/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/anfitriones", "/api/anfitriones/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/administradores", "/api/administradores/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
@@ -75,11 +76,11 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return username -> usuarioRepository.findByEmail(username)
-                .map(usuario -> new User(
-                        usuario.getEmail(),
-                        usuario.getContrasena(),
-                        Collections.singleton(new SimpleGrantedAuthority(usuario.getRol().name()))
+        return username -> personaRepository.findByEmail(username)
+                .map(persona -> new User(
+                        persona.getEmail(),
+                        persona.getContrasena(),
+                        Collections.singleton(new SimpleGrantedAuthority(persona.getRol().name()))
                 ))
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + username));
     }

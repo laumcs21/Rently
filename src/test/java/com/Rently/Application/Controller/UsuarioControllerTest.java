@@ -2,6 +2,7 @@ package com.Rently.Application.Controller;
 
 
 import com.Rently.Business.DTO.UsuarioDTO;
+import com.Rently.Business.Service.AuthService;
 import com.Rently.Business.Service.UsuarioService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,9 @@ class UsuarioControllerTest {
 
     @MockBean
     private UsuarioService usuarioService;
+
+    @MockBean
+    private AuthService authService;
 
     @Test
     void crearUsuarioShouldReturnCreated() throws Exception {

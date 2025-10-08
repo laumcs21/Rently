@@ -1,10 +1,12 @@
-package com.Rently.Business.Service.impl;
+﻿package com.Rently.Business.Service.impl;
 
 import com.Rently.Business.DTO.AnfitrionDTO;
+import com.Rently.Business.Exception.EmailAlreadyExistsException;
 import com.Rently.Business.Service.AnfitrionService;
 import com.Rently.Persistence.DAO.AnfitrionDAO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ import java.util.regex.Pattern;
 public class AnfitrionServiceImpl implements AnfitrionService {
 
     private final AnfitrionDAO anfitrionDAO;
+    private final PasswordEncoder passwordEncoder;
 
     // Regex simple para validar emails
     private static final Pattern EMAIL_PATTERN =
@@ -37,6 +40,13 @@ public class AnfitrionServiceImpl implements AnfitrionService {
         log.info("Creando anfitrión: {}", anfitrionDTO.getEmail());
 
         validateAnfitrionData(anfitrionDTO);
+
+        anfitrionDAO.buscarPorEmail(anfitrionDTO.getEmail()).ifPresent(existing -> {
+            throw new EmailAlreadyExistsException("Email ya registrado");
+        });
+
+        String contrasenaCodificada = passwordEncoder.encode(anfitrionDTO.getContrasena());
+        anfitrionDTO.setContrasena(contrasenaCodificada);
 
         return anfitrionDAO.crearAnfitrion(anfitrionDTO);
     }
@@ -145,6 +155,10 @@ public class AnfitrionServiceImpl implements AnfitrionService {
 
         if (dto.getEmail() == null || !EMAIL_PATTERN.matcher(dto.getEmail()).matches()) {
             throw new IllegalArgumentException("El formato de email no es válido");
+        }
+
+        if (dto.getContrasena() == null || dto.getContrasena().trim().isEmpty()) {
+            throw new IllegalArgumentException("La contraseña es obligatoria");
         }
 
         if (dto.getTelefono() != null && !dto.getTelefono().matches("\\d{7,15}")) {
