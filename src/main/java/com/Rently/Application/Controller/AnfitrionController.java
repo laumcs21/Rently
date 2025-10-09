@@ -4,6 +4,7 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -106,7 +107,7 @@ public class AnfitrionController {
         try {
             anfitrion.setId(id);
             AnfitrionDTO actualizado = anfitrionService.update(id, anfitrion)
-                    .orElseThrow(() -> new RuntimeException("Anfitri�n no encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Anfitrión no encontrado"));
             return ResponseEntity.ok(actualizado);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -289,10 +290,12 @@ public class AnfitrionController {
 
     // ---------------- Gestión de Reservas ----------------
 
+    
+
     @GetMapping("/{id}/reservas")
     @Operation(summary = "Listar reservas", description = "Obtiene todas las reservas realizadas en los alojamientos de un anfitrión con filtros")
     @ApiResponse(responseCode = "200", description = "Lista de reservas obtenida exitosamente")
-    public ResponseEntity<Page<ReservaDTO>> listarReservas(
+    public ResponseEntity<?> listarReservas(
             @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id,
             @Parameter(description = "Estado de la reserva") @RequestParam(required = false) String estado,
             @Parameter(description = "Fecha de inicio del filtro") @RequestParam(required = false) LocalDate fechaInicio,
@@ -302,8 +305,99 @@ public class AnfitrionController {
             @Parameter(description = "Tamaño de página", example = "10") @RequestParam(defaultValue = "10") int size,
             @Parameter(description = "Ordenar por", example = "fechaCreacion") @RequestParam(defaultValue = "fechaCreacion") String sortBy,
             @Parameter(description = "Dirección de orden", example = "desc") @RequestParam(defaultValue = "desc") String sortDir) {
-        return ResponseEntity.ok(null);
+        if (page < 0 || size <= 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Parámetros de paginación inválidos."));
+        }
+
+        Optional<AnfitrionDTO> anfitrionOpt = anfitrionService.findById(id);
+        if (anfitrionOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Anfitrión no encontrado"));
+        }
+
+        List<AlojamientoDTO> alojamientos = alojamientoService.findByHost(id);
+        if (alojamientoId != null) {
+            boolean pertenece = alojamientos.stream()
+                    .anyMatch(a -> a.getId().equals(alojamientoId));
+            if (!pertenece) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "El alojamiento no pertenece al anfitrión."));
+            }
+            alojamientos = alojamientos.stream()
+                    .filter(a -> a.getId().equals(alojamientoId))
+                    .collect(Collectors.toList());
+        }
+
+        List<ReservaDTO> reservas = alojamientos.stream()
+                .flatMap(aloj -> reservaService.findByAlojamientoId(aloj.getId()).stream())
+                .collect(Collectors.toList());
+
+        if (estado != null && !estado.trim().isEmpty()) {
+            EstadoReserva estadoFiltro;
+            try {
+                estadoFiltro = EstadoReserva.valueOf(estado.trim().toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Estado de reserva inválido."));
+            }
+            reservas = reservas.stream()
+                    .filter(r -> estadoFiltro.equals(r.getEstado()))
+                    .collect(Collectors.toList());
+        }
+
+        if (fechaInicio != null) {
+            reservas = reservas.stream()
+                    .filter(r -> r.getFechaInicio() != null && !r.getFechaInicio().isBefore(fechaInicio))
+                    .collect(Collectors.toList());
+        }
+
+        if (fechaFin != null) {
+            reservas = reservas.stream()
+                    .filter(r -> r.getFechaFin() != null && !r.getFechaFin().isAfter(fechaFin))
+                    .collect(Collectors.toList());
+        }
+
+        Comparator<ReservaDTO> comparator;
+        String sortField = sortBy == null ? "" : sortBy.trim().toLowerCase();
+        switch (sortField) {
+            case "fechafin" -> comparator = Comparator.comparing(
+                    ReservaDTO::getFechaFin,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+            case "estado" -> comparator = Comparator.comparing(
+                    r -> r.getEstado() != null ? r.getEstado().name() : "",
+                    String.CASE_INSENSITIVE_ORDER
+            );
+            case "alojamientoid" -> comparator = Comparator.comparing(
+                    ReservaDTO::getAlojamientoId,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+            case "usuarioid" -> comparator = Comparator.comparing(
+                    ReservaDTO::getUsuarioId,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+            default -> comparator = Comparator.comparing(
+                    ReservaDTO::getFechaInicio,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+        }
+
+        if ("desc".equalsIgnoreCase(sortDir)) {
+            comparator = comparator.reversed();
+        }
+
+        reservas.sort(comparator);
+
+        int total = reservas.size();
+        int fromIndex = Math.min(page * size, total);
+        int toIndex = Math.min(fromIndex + size, total);
+        List<ReservaDTO> contenido = reservas.subList(fromIndex, toIndex);
+
+        Page<ReservaDTO> resultado = new PageImpl<>(contenido, PageRequest.of(page, size), total);
+        return ResponseEntity.ok(resultado);
     }
+
 
     @GetMapping("/{id}/reservas/{reservaId}")
     @Operation(summary = "Obtener detalle de reserva", description = "Obtiene los detalles de una reserva específica")
@@ -324,10 +418,56 @@ public class AnfitrionController {
             @ApiResponse(responseCode = "404", description = "Reserva no encontrada"),
             @ApiResponse(responseCode = "400", description = "La reserva no está en estado pendiente")
     })
-    public ResponseEntity<ReservaDTO> aprobarReserva(
+    public ResponseEntity<Map<String, Object>> aprobarReserva(
             @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id,
             @Parameter(description = "ID de la reserva", example = "5") @PathVariable Long reservaId) {
-        return ResponseEntity.ok(null);
+        if (anfitrionService.findById(id).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Anfitrión no encontrado."));
+        }
+
+        Optional<ReservaDTO> reservaOpt = reservaService.findById(reservaId);
+        if (reservaOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Reserva no encontrada."));
+        }
+
+        ReservaDTO reserva = reservaOpt.get();
+
+        Optional<AlojamientoDTO> alojamientoOpt = alojamientoService.findById(reserva.getAlojamientoId());
+        if (alojamientoOpt.isEmpty() || !id.equals(alojamientoOpt.get().getAnfitrionId())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Reserva no encontrada."));
+        }
+
+        if (reserva.getEstado() == null || reserva.getEstado() != EstadoReserva.PENDIENTE) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Solo se pueden aprobar reservas en estado pendiente."));
+        }
+
+        try {
+            boolean updated = reservaService.updateState(reservaId, EstadoReserva.CONFIRMADA);
+            if (!updated) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "No se pudo actualizar el estado de la reserva."));
+            }
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null ? "No se pudo actualizar el estado de la reserva." : e.getMessage();
+            HttpStatus status = message.toLowerCase().contains("no encontrado") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status)
+                    .body(Map.of("error", message));
+        }
+
+        ReservaDTO actualizada = reservaService.findById(reservaId)
+                .orElse(reserva);
+        Long respuestaId = actualizada.getId() != null ? actualizada.getId() : reservaId;
+        EstadoReserva estadoFinal = actualizada.getEstado() != null ? actualizada.getEstado() : EstadoReserva.CONFIRMADA;
+
+        Map<String, Object> respuesta = new HashMap<>();
+        respuesta.put("id", respuestaId);
+        respuesta.put("estado", estadoFinal.name());
+
+        return ResponseEntity.ok(respuesta);
     }
 
     @PutMapping("/{id}/reservas/{reservaId}/rechazar")
@@ -337,11 +477,65 @@ public class AnfitrionController {
             @ApiResponse(responseCode = "404", description = "Reserva no encontrada"),
             @ApiResponse(responseCode = "400", description = "La reserva no está en estado pendiente")
     })
-    public ResponseEntity<ReservaDTO> rechazarReserva(
+    public ResponseEntity<Map<String, Object>> rechazarReserva(
             @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id,
             @Parameter(description = "ID de la reserva", example = "5") @PathVariable Long reservaId,
             @RequestBody Map<String, Object> rechazoRequest) {
-        return ResponseEntity.ok(null);
+        if (anfitrionService.findById(id).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Anfitrión no encontrado."));
+        }
+
+        Optional<ReservaDTO> reservaOpt = reservaService.findById(reservaId);
+        if (reservaOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Reserva no encontrada."));
+        }
+
+        ReservaDTO reserva = reservaOpt.get();
+
+        Optional<AlojamientoDTO> alojamientoOpt = alojamientoService.findById(reserva.getAlojamientoId());
+        if (alojamientoOpt.isEmpty() || !id.equals(alojamientoOpt.get().getAnfitrionId())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Reserva no encontrada."));
+        }
+
+        if (reserva.getEstado() == null || reserva.getEstado() != EstadoReserva.PENDIENTE) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Solo se pueden rechazar reservas en estado pendiente."));
+        }
+
+        Object motivoObj = rechazoRequest != null ? rechazoRequest.get("motivo") : null;
+        if (motivoObj == null || motivoObj.toString().trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "El motivo de rechazo es obligatorio."));
+        }
+        String motivo = motivoObj.toString().trim();
+
+        try {
+            boolean updated = reservaService.updateState(reservaId, EstadoReserva.RECHAZADA);
+            if (!updated) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "No se pudo actualizar el estado de la reserva."));
+            }
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null ? "No se pudo actualizar el estado de la reserva." : e.getMessage();
+            HttpStatus status = message.toLowerCase().contains("no encontrado") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status)
+                    .body(Map.of("error", message));
+        }
+
+        ReservaDTO actualizada = reservaService.findById(reservaId)
+                .orElse(reserva);
+        Long respuestaId = actualizada.getId() != null ? actualizada.getId() : reservaId;
+        EstadoReserva estadoFinal = actualizada.getEstado() != null ? actualizada.getEstado() : EstadoReserva.RECHAZADA;
+
+        Map<String, Object> respuesta = new HashMap<>();
+        respuesta.put("id", respuestaId);
+        respuesta.put("estado", estadoFinal.name());
+        respuesta.put("motivo", motivo);
+
+        return ResponseEntity.ok(respuesta);
     }
 
     @GetMapping("/{id}/reservas/pendientes")
@@ -394,13 +588,13 @@ public class AnfitrionController {
 
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Token de autenticaci�n requerido."));
+                    .body(Map.of("error", "Token de autenticación requerido."));
         }
 
         Optional<AnfitrionDTO> anfitrionOpt = anfitrionService.findById(id);
         if (anfitrionOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Anfitri�n no encontrado."));
+                    .body(Map.of("error", "Anfitrión no encontrado."));
         }
 
         Object respuestaObj = respuestaRequest != null ? respuestaRequest.get("respuesta") : null;

@@ -2,9 +2,15 @@
 
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,6 +30,8 @@ import com.Rently.Business.DTO.AnfitrionDTO;
 import com.Rently.Business.DTO.ReservaDTO;
 import com.Rently.Business.DTO.UsuarioDTO;
 import com.Rently.Business.Service.AdministradorService;
+import com.Rently.Business.Service.AlojamientoService;
+import com.Rently.Business.Service.UsuarioService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,9 +45,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AdministradorController {
 
     private final AdministradorService administradorService;
+    private final UsuarioService usuarioService;
+    private final AlojamientoService alojamientoService;
 
-    public AdministradorController(AdministradorService administradorService) {
+    public AdministradorController(AdministradorService administradorService,
+                                   UsuarioService usuarioService,
+                                   AlojamientoService alojamientoService) {
         this.administradorService = administradorService;
+        this.usuarioService = usuarioService;
+        this.alojamientoService = alojamientoService;
     }
 
     // ---------------- CRUD de Administradores ----------------
@@ -125,20 +139,57 @@ public class AdministradorController {
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
             @ApiResponse(responseCode = "409", description = "Email duplicado")
     })
-    public ResponseEntity<UsuarioDTO> crearUsuario(@RequestBody UsuarioDTO usuario) {
-        return ResponseEntity.status(201).body(null);
+    public ResponseEntity<?> crearUsuario(@RequestBody UsuarioDTO usuario) {
+        try {
+            UsuarioDTO creado = usuarioService.registerUser(usuario);
+            URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                    .path("/{id}")
+                    .buildAndExpand(creado.getId())
+                    .toUri();
+            return ResponseEntity.created(location).body(creado);
+        } catch (IllegalStateException e) {
+            String message = e.getMessage() == null ? "El email ya está registrado" : e.getMessage();
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", message));
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "Datos inválidos" : e.getMessage();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", message));
+        }
     }
 
     @GetMapping("/usuarios")
     @Operation(summary = "Listar usuarios", description = "Obtiene la lista de todos los usuarios con filtros opcionales")
     @ApiResponse(responseCode = "200", description = "Lista de usuarios obtenida exitosamente")
-    public ResponseEntity<Page<UsuarioDTO>> listarUsuarios(
+    public ResponseEntity<?> listarUsuarios(
             @Parameter(description = "Filtro por rol") @RequestParam(required = false) String filter,
             @Parameter(description = "Número de página", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Tamaño de página", example = "10") @RequestParam(defaultValue = "10") int size,
             @Parameter(description = "Ordenar por", example = "fechaCreacion") @RequestParam(defaultValue = "fechaCreacion") String sortBy,
             @Parameter(description = "Dirección de orden", example = "desc") @RequestParam(defaultValue = "desc") String sortDir) {
-        return ResponseEntity.ok(null);
+        if (page < 0 || size <= 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Parámetros de paginación inválidos."));
+        }
+
+        List<UsuarioDTO> usuarios = new ArrayList<>(usuarioService.findAllUsers());
+        if (filter != null && !filter.trim().isEmpty()) {
+            usuarios = filtrarUsuarios(usuarios, filter);
+        }
+
+        Comparator<UsuarioDTO> comparator = obtenerComparadorUsuarios(sortBy);
+        if ("desc".equalsIgnoreCase(sortDir)) {
+            comparator = comparator.reversed();
+        }
+        usuarios.sort(comparator);
+
+        int total = usuarios.size();
+        int fromIndex = Math.min(page * size, total);
+        int toIndex = Math.min(fromIndex + size, total);
+        List<UsuarioDTO> contenido = usuarios.subList(fromIndex, toIndex);
+
+        Page<UsuarioDTO> resultado = new PageImpl<>(contenido, PageRequest.of(page, size), total);
+        return ResponseEntity.ok(resultado);
     }
 
     @PutMapping("/usuarios/{id}")
@@ -148,10 +199,22 @@ public class AdministradorController {
             @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
             @ApiResponse(responseCode = "400", description = "Datos inválidos")
     })
-    public ResponseEntity<UsuarioDTO> editarUsuario(
+    public ResponseEntity<?> editarUsuario(
             @Parameter(description = "ID del usuario", example = "1") @PathVariable Long id,
             @RequestBody UsuarioDTO usuario) {
-        return ResponseEntity.ok(null);
+        try {
+            usuario.setId(id);
+            UsuarioDTO actualizado = usuarioService.updateUserProfile(id, usuario);
+            return ResponseEntity.ok(actualizado);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null ? "No se pudo actualizar el usuario" : e.getMessage();
+            HttpStatus status = message.toLowerCase().contains("no encontrado") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status)
+                    .body(Map.of("error", message));
+        }
     }
 
     @DeleteMapping("/usuarios/{id}")
@@ -161,9 +224,19 @@ public class AdministradorController {
             @ApiResponse(responseCode = "400", description = "El usuario no existe"),
             @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
     })
-    public ResponseEntity<Void> eliminarUsuario(
+    public ResponseEntity<?> eliminarUsuario(
             @Parameter(description = "ID del usuario", example = "1") @PathVariable Long id) {
-        return ResponseEntity.noContent().build();
+        try {
+            usuarioService.deleteUser(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            String message = e.getMessage();
+            if (message == null || message.toLowerCase().contains("no encontrado")) {
+                message = "El usuario no existe";
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", message));
+        }
     }
 
     // ---------------- Gestión de Anfitriones ----------------
@@ -220,18 +293,73 @@ public class AdministradorController {
     @GetMapping("/alojamientos")
     @Operation(summary = "Listar todos los alojamientos", description = "Obtiene la lista de todos los alojamientos del sistema")
     @ApiResponse(responseCode = "200", description = "Lista de alojamientos obtenida exitosamente")
-    public ResponseEntity<Page<AlojamientoDTO>> listarTodosAlojamientos(
+    public ResponseEntity<?> listarTodosAlojamientos(
             @Parameter(description = "Filtro por ciudad") @RequestParam(required = false) String ciudad,
             @Parameter(description = "Filtro por estado") @RequestParam(required = false) String estado,
             @Parameter(description = "ID del anfitrión") @RequestParam(required = false) Long anfitrionId,
+            @Parameter(description = "Filtro por título") @RequestParam(required = false) String titulo,
             @Parameter(description = "Número de página", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Tamaño de página", example = "10") @RequestParam(defaultValue = "10") int size,
             @Parameter(description = "Ordenar por", example = "fechaCreacion") @RequestParam(defaultValue = "fechaCreacion") String sortBy,
             @Parameter(description = "Dirección de orden", example = "desc") @RequestParam(defaultValue = "desc") String sortDir) {
-        return ResponseEntity.ok(null);
+        if (page < 0 || size <= 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Parámetros de paginación inválidos."));
+        }
+
+        List<AlojamientoDTO> alojamientos = new ArrayList<>(alojamientoService.findAll());
+
+        if (ciudad != null && !ciudad.trim().isEmpty()) {
+            String ciudadFiltro = ciudad.trim().toLowerCase();
+            alojamientos = alojamientos.stream()
+                    .filter(a -> a.getCiudad() != null && a.getCiudad().toLowerCase().contains(ciudadFiltro))
+                    .collect(Collectors.toList());
+        }
+
+        if (titulo != null && !titulo.trim().isEmpty()) {
+            String tituloFiltro = titulo.trim().toLowerCase();
+            alojamientos = alojamientos.stream()
+                    .filter(a -> a.getTitulo() != null && a.getTitulo().toLowerCase().contains(tituloFiltro))
+                    .collect(Collectors.toList());
+        }
+
+        if (estado != null && !estado.trim().isEmpty()) {
+            String estadoLower = estado.trim().toLowerCase();
+            alojamientos = alojamientos.stream()
+                    .filter(a -> {
+                        if ("activo".equals(estadoLower)) {
+                            return !a.isEliminado();
+                        }
+                        if ("inactivo".equals(estadoLower) || "eliminado".equals(estadoLower)) {
+                            return a.isEliminado();
+                        }
+                        return true;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        if (anfitrionId != null) {
+            alojamientos = alojamientos.stream()
+                    .filter(a -> a.getAnfitrionId() != null && a.getAnfitrionId().equals(anfitrionId))
+                    .collect(Collectors.toList());
+        }
+
+        Comparator<AlojamientoDTO> comparator = obtenerComparadorAlojamientos(sortBy);
+        if ("desc".equalsIgnoreCase(sortDir)) {
+            comparator = comparator.reversed();
+        }
+        alojamientos.sort(comparator);
+
+        int total = alojamientos.size();
+        int fromIndex = Math.min(page * size, total);
+        int toIndex = Math.min(fromIndex + size, total);
+        List<AlojamientoDTO> contenido = alojamientos.subList(fromIndex, toIndex);
+
+        Page<AlojamientoDTO> resultado = new PageImpl<>(contenido, PageRequest.of(page, size), total);
+        return ResponseEntity.ok(resultado);
     }
 
-    @PostMapping("/anfitriones/{id}/alojamientos")
+@PostMapping("/anfitriones/{id}/alojamientos")
     @Operation(summary = "Crear alojamiento", description = "El administrador crea un alojamiento para un anfitrión específico")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Alojamiento creado exitosamente"),
@@ -317,6 +445,68 @@ public class AdministradorController {
     @ApiResponse(responseCode = "200", description = "Dashboard obtenido exitosamente")
     public ResponseEntity<Map<String, Object>> obtenerDashboard() {
         return ResponseEntity.ok(null);
+    }
+
+    private List<UsuarioDTO> filtrarUsuarios(List<UsuarioDTO> usuarios, String filter) {
+        if (filter == null || filter.trim().isEmpty()) {
+            return usuarios;
+        }
+        String[] partes = filter.split(":", 2);
+        if (partes.length == 2) {
+            String clave = partes[0].trim().toLowerCase();
+            String valor = partes[1].trim().toLowerCase();
+            return usuarios.stream()
+                    .filter(usuario -> switch (clave) {
+                        case "rol" -> usuario.getRol() != null && usuario.getRol().name().equalsIgnoreCase(valor);
+                        case "nombre" -> usuario.getNombre() != null && usuario.getNombre().toLowerCase().contains(valor);
+                        case "email" -> usuario.getEmail() != null && usuario.getEmail().toLowerCase().contains(valor);
+                        default -> true;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        String termino = filter.trim().toLowerCase();
+        return usuarios.stream()
+                .filter(usuario -> (usuario.getNombre() != null && usuario.getNombre().toLowerCase().contains(termino))
+                        || (usuario.getEmail() != null && usuario.getEmail().toLowerCase().contains(termino))
+                        || (usuario.getRol() != null && usuario.getRol().name().toLowerCase().contains(termino)))
+                .collect(Collectors.toList());
+    }
+
+    private Comparator<UsuarioDTO> obtenerComparadorUsuarios(String sortBy) {
+        String campo = sortBy == null ? "" : sortBy.trim().toLowerCase();
+        return switch (campo) {
+            case "nombre" -> Comparator.comparing(
+                    usuario -> usuario.getNombre() != null ? usuario.getNombre().toLowerCase() : "",
+                    Comparator.naturalOrder());
+            case "email" -> Comparator.comparing(
+                    usuario -> usuario.getEmail() != null ? usuario.getEmail().toLowerCase() : "",
+                    Comparator.naturalOrder());
+            case "rol" -> Comparator.comparing(
+                    usuario -> usuario.getRol() != null ? usuario.getRol().name() : "",
+                    String.CASE_INSENSITIVE_ORDER);
+            default -> Comparator.comparing(
+                    UsuarioDTO::getId,
+                    Comparator.nullsLast(Comparator.naturalOrder()));
+        };
+    }
+
+    private Comparator<AlojamientoDTO> obtenerComparadorAlojamientos(String sortBy) {
+        String campo = sortBy == null ? "" : sortBy.trim().toLowerCase();
+        return switch (campo) {
+            case "titulo" -> Comparator.comparing(
+                    alojamiento -> alojamiento.getTitulo() != null ? alojamiento.getTitulo().toLowerCase() : "",
+                    Comparator.naturalOrder());
+            case "ciudad" -> Comparator.comparing(
+                    alojamiento -> alojamiento.getCiudad() != null ? alojamiento.getCiudad().toLowerCase() : "",
+                    Comparator.naturalOrder());
+            case "precio" -> Comparator.comparing(
+                    alojamiento -> alojamiento.getPrecioPorNoche(),
+                    Comparator.nullsLast(Comparator.naturalOrder()));
+            default -> Comparator.comparing(
+                    AlojamientoDTO::getId,
+                    Comparator.nullsLast(Comparator.naturalOrder()));
+        };
     }
 }
 

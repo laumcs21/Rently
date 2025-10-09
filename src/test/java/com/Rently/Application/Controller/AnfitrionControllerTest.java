@@ -84,6 +84,76 @@ class AnfitrionControllerTest {
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
 
+
+    @Test
+    void aprobarReservaShouldReturnOk() throws Exception {
+        AnfitrionDTO anfitrion = new AnfitrionDTO();
+        anfitrion.setId(1L);
+        when(anfitrionService.findById(1L)).thenReturn(Optional.of(anfitrion));
+
+        ReservaDTO pendiente = new ReservaDTO();
+        pendiente.setId(9001L);
+        pendiente.setAlojamientoId(501L);
+        pendiente.setEstado(EstadoReserva.PENDIENTE);
+
+        ReservaDTO confirmada = new ReservaDTO();
+        confirmada.setId(9001L);
+        confirmada.setAlojamientoId(501L);
+        confirmada.setEstado(EstadoReserva.CONFIRMADA);
+
+        when(reservaService.findById(9001L)).thenReturn(Optional.of(pendiente), Optional.of(confirmada));
+
+        AlojamientoDTO alojamiento = new AlojamientoDTO();
+        alojamiento.setId(501L);
+        alojamiento.setAnfitrionId(1L);
+        when(alojamientoService.findById(501L)).thenReturn(Optional.of(alojamiento));
+
+        when(reservaService.updateState(9001L, EstadoReserva.CONFIRMADA)).thenReturn(true);
+
+        mockMvc.perform(put("/api/anfitriones/{id}/reservas/{reservaId}/aprobar", 1L, 9001L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(9001))
+                .andExpect(jsonPath("$.estado").value("CONFIRMADA"));
+    }
+
+    @Test
+    void rechazarReservaShouldReturnOk() throws Exception {
+        AnfitrionDTO anfitrion = new AnfitrionDTO();
+        anfitrion.setId(1L);
+        when(anfitrionService.findById(1L)).thenReturn(Optional.of(anfitrion));
+
+        ReservaDTO pendiente = new ReservaDTO();
+        pendiente.setId(9001L);
+        pendiente.setAlojamientoId(501L);
+        pendiente.setEstado(EstadoReserva.PENDIENTE);
+
+        ReservaDTO rechazada = new ReservaDTO();
+        rechazada.setId(9001L);
+        rechazada.setAlojamientoId(501L);
+        rechazada.setEstado(EstadoReserva.RECHAZADA);
+
+        when(reservaService.findById(9001L)).thenReturn(Optional.of(pendiente), Optional.of(rechazada));
+
+        AlojamientoDTO alojamiento = new AlojamientoDTO();
+        alojamiento.setId(501L);
+        alojamiento.setAnfitrionId(1L);
+        when(alojamientoService.findById(501L)).thenReturn(Optional.of(alojamiento));
+
+        when(reservaService.updateState(9001L, EstadoReserva.RECHAZADA)).thenReturn(true);
+
+        String body = """
+                { "motivo": "Fechas no disponibles por mantenimiento" }
+                """;
+
+        mockMvc.perform(put("/api/anfitriones/{id}/reservas/{reservaId}/rechazar", 1L, 9001L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(9001))
+                .andExpect(jsonPath("$.estado").value("RECHAZADA"))
+                .andExpect(jsonPath("$.motivo").value("Fechas no disponibles por mantenimiento"));
+    }
+
     @Test
     void listarReservasShouldReturnNotFoundWhenHostMissing() throws Exception {
         when(anfitrionService.findById(1L)).thenReturn(Optional.empty());
