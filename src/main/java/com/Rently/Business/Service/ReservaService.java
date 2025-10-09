@@ -59,6 +59,14 @@ public interface ReservaService {
     Optional<ReservaDTO> update(Long id, ReservaDTO reservaDTO);
 
     /**
+     * Cancela una reserva por parte del usuario propietario aplicando las reglas de negocio.
+     *
+     * @param id el ID de la reserva a cancelar
+     * @return la reserva cancelada
+     */
+    ReservaDTO cancelByUser(Long id);
+
+    /**
      * Actualiza el estado de una reserva.
      *
      * @param id         el ID de la reserva

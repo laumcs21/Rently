@@ -1,12 +1,16 @@
-﻿package com.Rently.Application.Controller;
+package com.Rently.Application.Controller;
 
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,8 +31,12 @@ import com.Rently.Business.DTO.ReservaDTO;
 import com.Rently.Business.DTO.Auth.AuthRequest;
 import com.Rently.Business.DTO.Auth.AuthResponse;
 import com.Rently.Business.DTO.UsuarioDTO;
+import com.Rently.Business.Service.AlojamientoService;
 import com.Rently.Business.Service.AuthService;
+import com.Rently.Business.Service.ComentarioService;
+import com.Rently.Business.Service.ReservaService;
 import com.Rently.Business.Service.UsuarioService;
+import com.Rently.Persistence.Entity.EstadoReserva;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -45,10 +53,20 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
     private final AuthService authService;
+    private final ReservaService reservaService;
+    private final ComentarioService comentarioService;
+    private final AlojamientoService alojamientoService;
 
-    public UsuarioController(UsuarioService usuarioService, AuthService authService) {
+    public UsuarioController(UsuarioService usuarioService,
+                             AuthService authService,
+                             ReservaService reservaService,
+                             ComentarioService comentarioService,
+                             AlojamientoService alojamientoService) {
         this.usuarioService = usuarioService;
         this.authService = authService;
+        this.reservaService = reservaService;
+        this.comentarioService = comentarioService;
+        this.alojamientoService = alojamientoService;
     }
 
     // ---------------- CRUD de Usuarios ----------------
@@ -70,6 +88,9 @@ public class UsuarioController {
             return ResponseEntity.created(location).body(nuevoUsuario);
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Solicitud incorrecta: datos incompletos"));
         }
     }
 
@@ -93,11 +114,22 @@ public class UsuarioController {
             @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
             @ApiResponse(responseCode = "400", description = "Datos inválidos")
     })
-    public ResponseEntity<UsuarioDTO> actualizarUsuario(
+    public ResponseEntity<?> actualizarUsuario(
             @Parameter(description = "ID del usuario", example = "1") @PathVariable Long id,
-            @Valid @RequestBody UsuarioDTO usuario) {
-        UsuarioDTO usuarioActualizado = usuarioService.updateUserProfile(id, usuario);
-        return ResponseEntity.ok(usuarioActualizado);
+            @RequestBody UsuarioDTO usuario) {
+        try {
+            usuario.setId(id);
+            UsuarioDTO usuarioActualizado = usuarioService.updateUserProfile(id, usuario);
+            return ResponseEntity.ok(usuarioActualizado);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null ? "No se pudo actualizar el usuario" : e.getMessage();
+            HttpStatus status = message.toLowerCase().contains("no encontrado") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status)
+                    .body(Map.of("error", message));
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -218,9 +250,14 @@ public class UsuarioController {
             @ApiResponse(responseCode = "200", description = "Detalles del alojamiento obtenidos"),
             @ApiResponse(responseCode = "404", description = "Alojamiento no encontrado")
     })
-    public ResponseEntity<AlojamientoDTO> obtenerDetalleAlojamiento(
+    public ResponseEntity<?> obtenerDetalleAlojamiento(
             @Parameter(description = "ID del alojamiento", example = "10") @PathVariable Long id) {
-        return ResponseEntity.ok(null);
+        var alojamientoOpt = alojamientoService.findById(id);
+        if (alojamientoOpt.isPresent()) {
+            return ResponseEntity.ok(alojamientoOpt.get());
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "Alojamiento no encontrado"));
     }
 
     @GetMapping("/alojamiento/{id}/disponibilidad")
@@ -252,8 +289,26 @@ public class UsuarioController {
             @ApiResponse(responseCode = "409", description = "Las fechas seleccionadas no están disponibles"),
             @ApiResponse(responseCode = "400", description = "Datos de reserva inválidos")
     })
-    public ResponseEntity<ReservaDTO> crearReserva(@RequestBody ReservaDTO reserva) {
-        return ResponseEntity.ok(null);
+    public ResponseEntity<?> crearReserva(@RequestBody ReservaDTO reserva) {
+        try {
+            ReservaDTO creada = reservaService.create(reserva);
+            URI location = ServletUriComponentsBuilder
+                    .fromCurrentRequest()
+                    .path("/{id}")
+                    .buildAndExpand(creada.getId())
+                    .toUri();
+            return ResponseEntity.created(location).body(creada);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null ? "Error al crear la reserva" : e.getMessage();
+            HttpStatus status = message.toLowerCase().contains("solapan")
+                    || message.toLowerCase().contains("disponible")
+                    ? HttpStatus.CONFLICT
+                    : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(Map.of("error", message));
+        }
     }
 
     @GetMapping("/{id}/reserva")
@@ -262,16 +317,73 @@ public class UsuarioController {
             @ApiResponse(responseCode = "200", description = "Reservas obtenidas exitosamente"),
             @ApiResponse(responseCode = "400", description = "El usuario no tiene reservas registradas")
     })
-    public ResponseEntity<Page<ReservaDTO>> listarReservas(
+    public ResponseEntity<?> listarReservas(
             @Parameter(description = "ID del usuario", example = "1") @PathVariable Long id,
             @Parameter(description = "Estado de la reserva") @RequestParam(required = false) String estado,
             @Parameter(description = "Fecha de inicio del filtro") @RequestParam(required = false) LocalDate fechaInicio,
             @Parameter(description = "Fecha de fin del filtro") @RequestParam(required = false) LocalDate fechaFin,
-            @Parameter(description = "Número de página", example = "0") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Tamaño de página", example = "10") @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "N?mero de p?gina", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tama?o de p?gina", example = "10") @RequestParam(defaultValue = "10") int size,
             @Parameter(description = "Ordenar por", example = "fechaCreacion") @RequestParam(defaultValue = "fechaCreacion") String sortBy,
-            @Parameter(description = "Dirección de orden", example = "desc") @RequestParam(defaultValue = "desc") String sortDir) {
-        return ResponseEntity.ok(null);
+            @Parameter(description = "Direcci?n de orden", example = "desc") @RequestParam(defaultValue = "desc") String sortDir) {
+        if (page < 0 || size <= 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Par?metros de paginaci?n inv?lidos."));
+        }
+
+        try {
+            List<ReservaDTO> reservas = reservaService.findByUserId(id);
+            if (reservas == null || reservas.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "El usuario no tiene reservas registradas"));
+            }
+
+            List<ReservaDTO> filtradas = new ArrayList<>(reservas);
+
+            if (estado != null && !estado.isBlank()) {
+                try {
+                    EstadoReserva estadoFiltro = EstadoReserva.valueOf(estado.trim().toUpperCase());
+                    filtradas.removeIf(r -> r.getEstado() != estadoFiltro);
+                } catch (IllegalArgumentException ex) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(Map.of("error", "Estado de reserva inv?lido."));
+                }
+            }
+
+            if (fechaInicio != null) {
+                filtradas.removeIf(r -> r.getFechaInicio() == null || r.getFechaInicio().isBefore(fechaInicio));
+            }
+
+            if (fechaFin != null) {
+                filtradas.removeIf(r -> r.getFechaFin() == null || r.getFechaFin().isAfter(fechaFin));
+            }
+
+            Comparator<ReservaDTO> comparator;
+            switch (sortBy.toLowerCase()) {
+                case "fechainicio" -> comparator = Comparator.comparing(ReservaDTO::getFechaInicio, Comparator.nullsLast(Comparator.naturalOrder()));
+                case "fechafin" -> comparator = Comparator.comparing(ReservaDTO::getFechaFin, Comparator.nullsLast(Comparator.naturalOrder()));
+                case "estado" -> comparator = Comparator.comparing(r -> r.getEstado() != null ? r.getEstado().name() : "");
+                case "id" -> comparator = Comparator.comparing(ReservaDTO::getId, Comparator.nullsLast(Comparator.naturalOrder()));
+                default -> comparator = Comparator.comparing(ReservaDTO::getFechaInicio, Comparator.nullsLast(Comparator.naturalOrder()));
+            }
+
+            if ("desc".equalsIgnoreCase(sortDir)) {
+                comparator = comparator.reversed();
+            }
+            filtradas.sort(comparator);
+
+            int fromIndex = Math.min(page * size, filtradas.size());
+            int toIndex = Math.min(fromIndex + size, filtradas.size());
+            List<ReservaDTO> pageContent = filtradas.subList(fromIndex, toIndex);
+
+            Page<ReservaDTO> resultado = new PageImpl<>(pageContent, PageRequest.of(page, size), filtradas.size());
+
+            return ResponseEntity.ok(resultado);
+        } catch (RuntimeException e) {
+            String mensaje = e.getMessage() == null ? "No se pudieron obtener las reservas" : e.getMessage();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", mensaje));
+        }
     }
 
     @GetMapping("/{id}/reserva/{reservaId}")
@@ -293,9 +405,24 @@ public class UsuarioController {
             @ApiResponse(responseCode = "409", description = "No se pueden cancelar reservas con menos de 48 horas de anticipación"),
             @ApiResponse(responseCode = "404", description = "Reserva no encontrada")
     })
-    public ResponseEntity<Map<String, Object>> cancelarReserva(
+    public ResponseEntity<?> cancelarReserva(
             @Parameter(description = "ID de la reserva", example = "5") @PathVariable Long id) {
-        return ResponseEntity.ok(null);
+        try {
+            ReservaDTO cancelada = reservaService.cancelByUser(id);
+            return ResponseEntity.ok(Map.of(
+                    "mensaje", "Reserva cancelada",
+                    "estado", cancelada.getEstado().name()
+            ));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null ? "No se pudo cancelar la reserva" : e.getMessage();
+            HttpStatus status = message.toLowerCase().contains("no encontrada")
+                    ? HttpStatus.NOT_FOUND
+                    : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(Map.of("error", message));
+        }
     }
 
     // ---------------- Gestión de Comentarios ----------------
@@ -307,10 +434,37 @@ public class UsuarioController {
             @ApiResponse(responseCode = "400", description = "Solicitud incorrecta: el usuario no ha finalizado la estadía"),
             @ApiResponse(responseCode = "409", description = "Ya existe un comentario para esta reserva")
     })
-    public ResponseEntity<ComentarioDTO> crearComentario(
+    public ResponseEntity<?> crearComentario(
             @Parameter(description = "ID de la reserva", example = "5") @PathVariable Long id,
             @RequestBody ComentarioDTO comentario) {
-        return ResponseEntity.ok(null);
+        try {
+            ReservaDTO reserva = reservaService.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Reserva no encontrada"));
+
+            if (reserva.getEstado() != null && reserva.getEstado() != EstadoReserva.FINALIZADA) {
+                throw new IllegalStateException("Solo se pueden comentar reservas finalizadas.");
+            }
+
+            comentario.setUsuarioId(reserva.getUsuarioId());
+            comentario.setAlojamientoId(reserva.getAlojamientoId());
+
+            ComentarioDTO creado = comentarioService.create(comentario);
+            return ResponseEntity.ok(creado);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            HttpStatus status = e.getMessage() != null && e.getMessage().toLowerCase().contains("no encontrada")
+                    ? HttpStatus.NOT_FOUND
+                    : HttpStatus.CONFLICT;
+            return ResponseEntity.status(status)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null ? "No se pudo crear el comentario" : e.getMessage();
+            HttpStatus status = message.toLowerCase().contains("no encontrada") ? HttpStatus.NOT_FOUND : HttpStatus.CONFLICT;
+            return ResponseEntity.status(status)
+                    .body(Map.of("error", message));
+        }
     }
 
     @GetMapping("/{id}/comentarios")

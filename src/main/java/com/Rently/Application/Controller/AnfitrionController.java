@@ -1,10 +1,18 @@
-package com.Rently.Application.Controller;
+﻿package com.Rently.Application.Controller;
 
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +30,10 @@ import com.Rently.Business.DTO.AnfitrionDTO;
 import com.Rently.Business.DTO.ComentarioDTO;
 import com.Rently.Business.DTO.ReservaDTO;
 import com.Rently.Business.Service.AnfitrionService;
+import com.Rently.Business.Service.ComentarioService;
+import com.Rently.Business.Service.ReservaService;
+import com.Rently.Business.Service.AlojamientoService;
+import com.Rently.Persistence.Entity.EstadoReserva;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,9 +47,18 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AnfitrionController {
 
     private final AnfitrionService anfitrionService;
+    private final AlojamientoService alojamientoService;
+    private final ComentarioService comentarioService;
+    private final ReservaService reservaService;
 
-    public AnfitrionController(AnfitrionService anfitrionService) {
+    public AnfitrionController(AnfitrionService anfitrionService,
+                               AlojamientoService alojamientoService,
+                               ComentarioService comentarioService,
+                               ReservaService reservaService) {
         this.anfitrionService = anfitrionService;
+        this.alojamientoService = alojamientoService;
+        this.comentarioService = comentarioService;
+        this.reservaService = reservaService;
     }
 
     // ---------------- CRUD de Anfitriones ----------------
@@ -66,8 +87,10 @@ public class AnfitrionController {
             @ApiResponse(responseCode = "404", description = "Anfitrión no encontrado")
     })
     public ResponseEntity<AnfitrionDTO> obtenerAnfitrion(
-            @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id) {
-        return ResponseEntity.ok(null);
+            @Parameter(description = "ID del anfitr�n", example = "1") @PathVariable Long id) {
+        return anfitrionService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
@@ -77,10 +100,23 @@ public class AnfitrionController {
             @ApiResponse(responseCode = "404", description = "Anfitrión no encontrado"),
             @ApiResponse(responseCode = "400", description = "Datos inválidos")
     })
-    public ResponseEntity<AnfitrionDTO> actualizarAnfitrion(
-            @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id,
+    public ResponseEntity<?> actualizarAnfitrion(
+            @Parameter(description = "ID del anfitri�n", example = "1") @PathVariable Long id,
             @RequestBody AnfitrionDTO anfitrion) {
-        return ResponseEntity.ok(null);
+        try {
+            anfitrion.setId(id);
+            AnfitrionDTO actualizado = anfitrionService.update(id, anfitrion)
+                    .orElseThrow(() -> new RuntimeException("Anfitri�n no encontrado"));
+            return ResponseEntity.ok(actualizado);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null ? "No se pudo actualizar el anfitri�n" : e.getMessage();
+            HttpStatus status = message.toLowerCase().contains("no encontrado") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status)
+                    .body(Map.of("error", message));
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -128,10 +164,27 @@ public class AnfitrionController {
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
             @ApiResponse(responseCode = "404", description = "Anfitrión no encontrado")
     })
-    public ResponseEntity<AlojamientoDTO> crearAlojamiento(
+    public ResponseEntity<?> crearAlojamiento(
             @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id,
             @RequestBody AlojamientoDTO alojamiento) {
-        return ResponseEntity.ok(null);
+        return anfitrionService.findById(id)
+                .map(host -> {
+                    try {
+                        alojamiento.setAnfitrionId(id);
+                        AlojamientoDTO creado = alojamientoService.create(alojamiento);
+                        URI location = ServletUriComponentsBuilder
+                                .fromCurrentRequest()
+                                .path("/{alojamientoId}")
+                                .buildAndExpand(creado.getId())
+                                .toUri();
+                        return ResponseEntity.created(location).body(creado);
+                    } catch (IllegalArgumentException e) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body(Map.of("error", e.getMessage()));
+                    }
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Anfitrión no encontrado")));
     }
 
     @GetMapping("/{id}/alojamientos/{alojamientoId}")
@@ -167,10 +220,27 @@ public class AnfitrionController {
             @ApiResponse(responseCode = "404", description = "Alojamiento no encontrado"),
             @ApiResponse(responseCode = "400", description = "No se puede eliminar alojamiento con reservas futuras")
     })
-    public ResponseEntity<Void> eliminarAlojamiento(
+    public ResponseEntity<?> eliminarAlojamiento(
             @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id,
             @Parameter(description = "ID del alojamiento", example = "10") @PathVariable Long alojamientoId) {
-        return ResponseEntity.noContent().build();
+        if (anfitrionService.findById(id).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Anfitrión no encontrado"));
+        }
+
+        Optional<AlojamientoDTO> alojamiento = alojamientoService.findById(alojamientoId);
+        if (alojamiento.isEmpty() || !id.equals(alojamiento.get().getAnfitrionId())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Alojamiento no encontrado"));
+        }
+
+        try {
+            alojamientoService.delete(alojamientoId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}/alojamientos/{alojamientoId}/disponibilidad")
@@ -316,11 +386,52 @@ public class AnfitrionController {
             @ApiResponse(responseCode = "404", description = "Comentario no encontrado"),
             @ApiResponse(responseCode = "400", description = "El comentario ya tiene respuesta")
     })
-    public ResponseEntity<ComentarioDTO> responderComentario(
+    public ResponseEntity<?> responderComentario(
             @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id,
             @Parameter(description = "ID del comentario", example = "5") @PathVariable Long comentarioId,
-            @RequestBody Map<String, Object> respuestaRequest) {
-        return ResponseEntity.ok(null);
+            @RequestBody Map<String, Object> respuestaRequest,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Token de autenticaci�n requerido."));
+        }
+
+        Optional<AnfitrionDTO> anfitrionOpt = anfitrionService.findById(id);
+        if (anfitrionOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Anfitri�n no encontrado."));
+        }
+
+        Object respuestaObj = respuestaRequest != null ? respuestaRequest.get("respuesta") : null;
+        if (respuestaObj == null || respuestaObj.toString().trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "La respuesta no puede estar vac�a."));
+        }
+
+        String respuesta = respuestaObj.toString().trim();
+
+        try {
+            ComentarioDTO actualizado = comentarioService.addResponse(comentarioId, respuesta, authorizationHeader);
+            return ResponseEntity.ok(actualizado);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            HttpStatus status = e.getMessage() != null && e.getMessage().toLowerCase().contains("no encontrado")
+                    ? HttpStatus.NOT_FOUND
+                    : HttpStatus.CONFLICT;
+            return ResponseEntity.status(status)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null ? "No se pudo responder el comentario" : e.getMessage();
+            HttpStatus status = message.toLowerCase().contains("no encontrado") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status)
+                    .body(Map.of("error", message));
+        }
     }
 
     @PutMapping("/{id}/comentarios/{comentarioId}/respuesta")
@@ -367,3 +478,8 @@ public class AnfitrionController {
         return ResponseEntity.ok(Map.of("mensaje", "Todas las notificaciones marcadas como leídas"));
     }
 }
+
+
+
+
+

@@ -1,4 +1,4 @@
-﻿package com.Rently.Persistence.DAO;
+package com.Rently.Persistence.DAO;
 
 import com.Rently.Business.DTO.AdministradorDTO;
 import com.Rently.Persistence.Entity.Administrador;

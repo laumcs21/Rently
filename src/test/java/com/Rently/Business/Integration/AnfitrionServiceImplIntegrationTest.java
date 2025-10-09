@@ -38,6 +38,7 @@ class AnfitrionServiceImplIntegrationTest extends BaseIntegrationTest {
         anfitrionBase.setEmail("anfitrion@example.com");
         anfitrionBase.setTelefono("3001234567");
         anfitrionBase.setFechaNacimiento(LocalDate.of(1985, 5, 20));
+        anfitrionBase.setContrasena("ClaveValida123");
 
         anfitrionBase = anfitrionService.create(anfitrionBase);
     }
@@ -52,6 +53,7 @@ class AnfitrionServiceImplIntegrationTest extends BaseIntegrationTest {
         nuevo.setEmail("nuevo@example.com");
         nuevo.setTelefono("3109876543");
         nuevo.setFechaNacimiento(LocalDate.of(1990, 1, 1));
+        nuevo.setContrasena("ClaveValida123");
 
         AnfitrionDTO guardado = anfitrionService.create(nuevo);
 
@@ -68,6 +70,7 @@ class AnfitrionServiceImplIntegrationTest extends BaseIntegrationTest {
         AnfitrionDTO invalido = new AnfitrionDTO();
         invalido.setNombre("Invalid Email");
         invalido.setEmail("correo-invalido");
+        invalido.setContrasena("ClaveValida123");
 
         assertThatThrownBy(() -> anfitrionService.create(invalido))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -81,6 +84,7 @@ class AnfitrionServiceImplIntegrationTest extends BaseIntegrationTest {
         invalido.setNombre("Tel Invalid");
         invalido.setEmail("phone@example.com");
         invalido.setTelefono("abc123");
+        invalido.setContrasena("ClaveValida123");
 
         assertThatThrownBy(() -> anfitrionService.create(invalido))
                 .isInstanceOf(IllegalArgumentException.class)

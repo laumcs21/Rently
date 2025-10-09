@@ -3,6 +3,8 @@ package com.Rently.Business.Unit;
 import com.Rently.Business.DTO.AlojamientoDTO;
 import com.Rently.Business.Service.impl.AlojamientoServiceImpl;
 import com.Rently.Persistence.DAO.AlojamientoDAO;
+import com.Rently.Persistence.Entity.Reserva;
+import com.Rently.Persistence.Repository.ReservaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +28,9 @@ class AlojamientoServiceImplUnitTest {
 
     @Mock
     private AlojamientoDAO alojamientoDAO;
+
+    @Mock
+    private ReservaRepository reservaRepository;
 
     @InjectMocks
     private AlojamientoServiceImpl alojamientoService;

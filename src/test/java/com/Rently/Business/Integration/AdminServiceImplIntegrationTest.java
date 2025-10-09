@@ -31,6 +31,7 @@ public class AdminServiceImplIntegrationTest extends BaseIntegrationTest {
         admin.setTelefono("1234567890");
         admin.setFechaNacimiento(LocalDate.now().minusYears(30));
         admin.setRol(Rol.ADMINISTRADOR);
+        admin.setContrasena("ClaveValida123");
 
         AdministradorDTO guardado = administradorService.create(admin);
 
@@ -49,6 +50,7 @@ public class AdminServiceImplIntegrationTest extends BaseIntegrationTest {
         admin.setTelefono("1234567890");
         admin.setFechaNacimiento(LocalDate.now().minusYears(30));
         admin.setRol(Rol.ADMINISTRADOR);
+        admin.setContrasena("ClaveValida123");
 
         AdministradorDTO guardado = administradorService.create(admin);
         Optional<AdministradorDTO> encontrado = administradorService.findById(guardado.getId());
@@ -68,6 +70,7 @@ public class AdminServiceImplIntegrationTest extends BaseIntegrationTest {
         admin.setTelefono("1234567890");
         admin.setFechaNacimiento(LocalDate.now().minusYears(30));
         admin.setRol(Rol.ADMINISTRADOR);
+        admin.setContrasena("ClaveValida123");
 
         administradorService.create(admin);
 
@@ -93,6 +96,7 @@ public class AdminServiceImplIntegrationTest extends BaseIntegrationTest {
         admin.setTelefono("1234567890");
         admin.setFechaNacimiento(LocalDate.now().minusYears(30));
         admin.setRol(Rol.ADMINISTRADOR);
+        admin.setContrasena("ClaveValida123");
 
         AdministradorDTO guardado = administradorService.create(admin);
 
@@ -123,6 +127,7 @@ public class AdminServiceImplIntegrationTest extends BaseIntegrationTest {
         admin.setTelefono("1234567890");
         admin.setFechaNacimiento(LocalDate.now().minusYears(30));
         admin.setRol(Rol.ADMINISTRADOR);
+        admin.setContrasena("ClaveValida123");
 
         AdministradorDTO guardado = administradorService.create(admin);
         boolean eliminado = administradorService.delete(guardado.getId());

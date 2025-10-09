@@ -1,4 +1,4 @@
-package com.Rently.Application.Controller;
+﻿package com.Rently.Application.Controller;
 
 
 import com.Rently.Business.DTO.AdministradorDTO;
@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -63,7 +64,46 @@ class AdministradorControllerTest {
                 .andExpect(jsonPath("$.id").value(1));
     }
 
+        @Test
+    void actualizarAdministradorShouldReturnOk() throws Exception {
+        AdministradorDTO actualizado = new AdministradorDTO();
+        actualizado.setId(5L);
+        actualizado.setNombre("Admin Actualizado");
+
+        when(administradorService.update(org.mockito.ArgumentMatchers.eq(5L), any(AdministradorDTO.class)))
+                .thenReturn(java.util.Optional.of(actualizado));
+
+        mockMvc.perform(put("/api/administradores/{id}", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new AdministradorDTO())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombre").value("Admin Actualizado"));
+    }
+
     @Test
+    void actualizarAdministradorShouldReturnBadRequest() throws Exception {
+        when(administradorService.update(org.mockito.ArgumentMatchers.eq(5L), any(AdministradorDTO.class)))
+                .thenThrow(new IllegalArgumentException("Datos inválidos"));
+
+        mockMvc.perform(put("/api/administradores/{id}", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new AdministradorDTO())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Datos inválidos"));
+    }
+
+    @Test
+    void actualizarAdministradorShouldReturnNotFound() throws Exception {
+        when(administradorService.update(org.mockito.ArgumentMatchers.eq(15L), any(AdministradorDTO.class)))
+                .thenThrow(new RuntimeException("Administrador no encontrado"));
+
+        mockMvc.perform(put("/api/administradores/{id}", 15L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new AdministradorDTO())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Administrador no encontrado"));
+    }
+@Test
     void eliminarAdministradorShouldReturnNoContent() throws Exception {
         mockMvc.perform(delete("/api/administradores/{id}", 4L))
                 .andExpect(status().isNoContent());
@@ -75,3 +115,5 @@ class AdministradorControllerTest {
                 .andExpect(status().isOk());
     }
 }
+
+

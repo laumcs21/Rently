@@ -316,6 +316,42 @@ class ReservaServiceImplUnitTest {
         verify(reservaDAO, times(1)).listarPorAlojamiento(2L);
     }
 
+    // =================== CANCEL BY USER TESTS ===================
+
+    @Test
+    @DisplayName("CANCEL - Usuario puede cancelar reserva con más de 48 horas de anticipación")
+    void cancelByUser_WithMoreThan48Hours_ShouldCancel() {
+        validReserva.setId(validId);
+        validReserva.setFechaInicio(LocalDate.now().plusDays(5));
+
+        when(reservaDAO.buscarPorId(validId)).thenReturn(Optional.of(validReserva));
+        when(usuarioDAO.buscarPorEmail("test@test.com")).thenReturn(Optional.of(usuarioDTO));
+        when(personaMapper.dtoToUsuario(usuarioDTO)).thenReturn(usuarioEntity);
+        when(reservaDAO.cambiarEstado(validId, EstadoReserva.CANCELADA)).thenReturn(true);
+
+        ReservaDTO result = reservaService.cancelByUser(validId);
+
+        assertThat(result.getEstado()).isEqualTo(EstadoReserva.CANCELADA);
+        verify(reservaDAO, times(1)).cambiarEstado(validId, EstadoReserva.CANCELADA);
+    }
+
+    @Test
+    @DisplayName("CANCEL - No permite cancelar con menos de 48 horas de anticipación")
+    void cancelByUser_WithLessThan48Hours_ShouldThrow() {
+        validReserva.setId(validId);
+        validReserva.setFechaInicio(LocalDate.now().plusDays(1));
+
+        when(reservaDAO.buscarPorId(validId)).thenReturn(Optional.of(validReserva));
+        when(usuarioDAO.buscarPorEmail("test@test.com")).thenReturn(Optional.of(usuarioDTO));
+        when(personaMapper.dtoToUsuario(usuarioDTO)).thenReturn(usuarioEntity);
+
+        assertThatThrownBy(() -> reservaService.cancelByUser(validId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("No se pueden cancelar reservas con menos de 48 horas de anticipación");
+
+        verify(reservaDAO, never()).cambiarEstado(any(), any());
+    }
+
     // =================== UPDATE TESTS ===================
 
     @Test

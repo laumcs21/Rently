@@ -1,10 +1,11 @@
-package com.Rently.Application.Controller;
+﻿package com.Rently.Application.Controller;
 
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -73,7 +74,9 @@ public class AdministradorController {
     })
     public ResponseEntity<AdministradorDTO> obtenerAdministrador(
             @Parameter(description = "ID del administrador", example = "1") @PathVariable Long id) {
-        return ResponseEntity.ok(null);
+        return administradorService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
@@ -83,10 +86,23 @@ public class AdministradorController {
             @ApiResponse(responseCode = "404", description = "Administrador no encontrado"),
             @ApiResponse(responseCode = "400", description = "Datos inválidos")
     })
-    public ResponseEntity<AdministradorDTO> actualizarAdministrador(
+    public ResponseEntity<?> actualizarAdministrador(
             @Parameter(description = "ID del administrador", example = "1") @PathVariable Long id,
             @RequestBody AdministradorDTO administrador) {
-        return ResponseEntity.ok(null);
+        try {
+            administrador.setId(id);
+            AdministradorDTO actualizado = administradorService.update(id, administrador)
+                    .orElseThrow(() -> new RuntimeException("Administrador no encontrado"));
+            return ResponseEntity.ok(actualizado);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null ? "No se pudo actualizar el administrador" : e.getMessage();
+            HttpStatus status = message.toLowerCase().contains("no encontrado") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status)
+                    .body(Map.of("error", message));
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -303,4 +319,9 @@ public class AdministradorController {
         return ResponseEntity.ok(null);
     }
 }
+
+
+
+
+
 
