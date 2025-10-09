@@ -1,0 +1,1 @@
+{"uuid":"e320edbf-0e3e-40cd-bb17-49bb67f49650","name":"READ | GIVEN base con registros WHEN findAllUsers THEN retorna lista","children":["a62819d1-0360-49c5-bb0a-bb9b2c9df7fe"],"befores":[],"afters":[],"start":1759770463038,"stop":1759770463086}

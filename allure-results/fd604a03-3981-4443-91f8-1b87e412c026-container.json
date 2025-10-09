@@ -1,0 +1,1 @@
+{"uuid":"fd604a03-3981-4443-91f8-1b87e412c026","name":"CREATE - Capacidad invalida debe lanzar IllegalArgumentException","children":["ce6c754f-f178-4965-861e-a09ae41540bf"],"befores":[],"afters":[],"start":1759800787662,"stop":1759800787669}

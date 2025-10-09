@@ -1,0 +1,1 @@
+{"uuid":"46c54754-794e-4f41-9107-f3d377b206f0","name":"CREATE | GIVEN campos obligatorios faltantes WHEN registerUser THEN IllegalArgumentException","children":["c2600196-a282-4607-a774-0bbf6adf0945"],"befores":[],"afters":[],"start":1759770463091,"stop":1759770463110}

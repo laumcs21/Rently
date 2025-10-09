@@ -6,202 +6,287 @@ import com.Rently.Persistence.Entity.Rol;
 import com.Rently.Persistence.Entity.Usuario;
 import com.Rently.Persistence.Mapper.PersonaMapper;
 import com.Rently.Persistence.Repository.UsuarioRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Pruebas unitarias de UsuarioServiceImpl
+ * Formato consistente: GIVEN – WHEN – THEN (en DisplayName) + verificación clara de oráculos.
+ * NOTA: No incluye envío de email de bienvenida.
+ */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("UsuarioService - Unit Tests con Mockito")
+@DisplayName("UsuarioServiceImpl | Unit Tests")
 class UsuarioServiceImplUnitTest {
 
-    @Mock
-    private UsuarioRepository usuarioRepository;
-
-    @Mock
-    private PersonaMapper personaMapper;
-
-    @Mock
-    private PasswordEncoder passwordEncoder;
+    @Mock private UsuarioRepository usuarioRepository;
+    @Mock private PersonaMapper personaMapper;
+    @Mock private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private UsuarioServiceImpl usuarioService;
 
-    private UsuarioDTO validUsuarioDTO;
-    private Usuario validUsuario;
+    private UsuarioDTO dtoValido;
+    private Usuario entidadValida;
 
     @BeforeEach
-    void setUp() {
-        validUsuarioDTO = new UsuarioDTO(
+    void init() {
+        dtoValido = new UsuarioDTO(
                 1L,
                 "Juan Pérez",
                 "juan@example.com",
                 "3001234567",
-                "Password123",
+                "Password123",              // ≥8 + mayúscula + número
                 LocalDate.of(1990, 1, 1),
                 Rol.USUARIO,
                 "perfil.jpg"
         );
 
-        validUsuario = new Usuario();
-        validUsuario.setId(1L);
-        validUsuario.setNombre("Juan Pérez");
-        validUsuario.setEmail("juan@example.com");
-        validUsuario.setContrasena("encodedPass");
-        validUsuario.setTelefono("3001234567");
-        validUsuario.setFechaNacimiento(LocalDate.of(1990, 1, 1));
-        validUsuario.setRol(Rol.USUARIO);
+        entidadValida = new Usuario();
+        entidadValida.setId(1L);
+        entidadValida.setNombre("Juan Pérez");
+        entidadValida.setEmail("juan@example.com");
+        entidadValida.setTelefono("3001234567");
+        entidadValida.setFechaNacimiento(LocalDate.of(1990, 1, 1));
+        entidadValida.setRol(Rol.USUARIO);
+        entidadValida.setContrasena("encodedPass");
     }
 
-    // ==================== CREATE ====================
+    // =========================================================
+    // CREATE
+    // =========================================================
 
     @Test
-    @DisplayName("CREATE - Usuario válido debe registrarse exitosamente")
-    void registerUser_ValidData_ShouldReturnUsuarioDTO() {
-        when(usuarioRepository.findByEmail(validUsuarioDTO.getEmail())).thenReturn(Optional.empty());
-        when(personaMapper.dtoToUsuario(validUsuarioDTO)).thenReturn(validUsuario);
-        when(passwordEncoder.encode(validUsuarioDTO.getContrasena())).thenReturn("encodedPass");
-        when(usuarioRepository.save(any(Usuario.class))).thenReturn(validUsuario);
-        when(personaMapper.usuarioToDTO(validUsuario)).thenReturn(validUsuarioDTO);
+    @DisplayName("CREATE | GIVEN DTO válido WHEN registerUser THEN persiste y encripta contraseña")
+    void registerUser_valid_shouldPersist_andEncodePassword() {
+        when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.empty());
+        when(personaMapper.dtoToUsuario(dtoValido)).thenAnswer(inv -> {
+            Usuario u = new Usuario();
+            u.setNombre(dtoValido.getNombre());
+            u.setEmail(dtoValido.getEmail());
+            u.setTelefono(dtoValido.getTelefono());
+            u.setFechaNacimiento(dtoValido.getFechaNacimiento());
+            u.setRol(dtoValido.getRol());
+            u.setContrasena(dtoValido.getContrasena()); // será reemplazada por la codificada
+            return u;
+        });
+        when(passwordEncoder.encode("Password123")).thenReturn("ENCODED");
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> {
+            Usuario u = inv.getArgument(0);
+            u.setId(1L);
+            return u;
+        });
+        when(personaMapper.usuarioToDTO(any(Usuario.class))).thenReturn(dtoValido);
 
-        UsuarioDTO result = usuarioService.registerUser(validUsuarioDTO);
+        ArgumentCaptor<Usuario> cap = ArgumentCaptor.forClass(Usuario.class);
 
-        assertThat(result).isNotNull();
-        assertThat(result.getEmail()).isEqualTo("juan@example.com");
+        UsuarioDTO out = usuarioService.registerUser(dtoValido);
+
+        assertThat(out).isNotNull();
+        assertThat(out.getEmail()).isEqualTo("juan@example.com");
+        verify(passwordEncoder).encode("Password123");
+        verify(usuarioRepository).save(cap.capture());
+        assertThat(cap.getValue().getContrasena()).isEqualTo("ENCODED");
+    }
+
+    @Test
+    @DisplayName("CREATE | GIVEN email duplicado WHEN registerUser THEN IllegalStateException")
+    void registerUser_duplicateEmail_shouldThrow() {
+        when(usuarioRepository.findByEmail("juan@example.com")).thenReturn(Optional.of(entidadValida));
+
+        assertThatThrownBy(() -> usuarioService.registerUser(dtoValido))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ya está en uso");
+
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("CREATE | GIVEN email inválido WHEN registerUser THEN IllegalArgumentException")
+    void registerUser_invalidEmail_shouldThrow() {
+        dtoValido.setEmail("correo-invalido");
+
+        assertThatThrownBy(() -> usuarioService.registerUser(dtoValido))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("formato del email no es válido");
+
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("CREATE | GIVEN contraseña débil WHEN registerUser THEN IllegalArgumentException")
+    void registerUser_weakPassword_shouldThrow() {
+        dtoValido.setContrasena("abc"); // < 8, sin mayúscula/numero
+
+        assertThatThrownBy(() -> usuarioService.registerUser(dtoValido))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("al menos 8")
+                .hasMessageContaining("mayúscula")
+                .hasMessageContaining("número");
+
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("CREATE | GIVEN teléfono con formato inválido WHEN registerUser THEN IllegalArgumentException")
+    void registerUser_invalidPhone_shouldThrow() {
+        dtoValido.setTelefono("12AB");
+
+        assertThatThrownBy(() -> usuarioService.registerUser(dtoValido))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("teléfono");
+
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("CREATE | GIVEN campos obligatorios faltantes WHEN registerUser THEN IllegalArgumentException")
+    void registerUser_missingRequiredFields_shouldThrow() {
+        UsuarioDTO incompleto = new UsuarioDTO();
+        assertThatThrownBy(() -> usuarioService.registerUser(incompleto))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    // =========================================================
+    // READ
+    // =========================================================
+
+    @Test
+    @DisplayName("READ | GIVEN ID existente WHEN findUserById THEN retorna DTO")
+    void findUserById_existing_shouldReturn() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(entidadValida));
+        when(personaMapper.usuarioToDTO(entidadValida)).thenReturn(dtoValido);
+
+        Optional<UsuarioDTO> out = usuarioService.findUserById(1L);
+
+        assertThat(out).isPresent();
+        assertThat(out.get().getEmail()).isEqualTo("juan@example.com");
+    }
+
+    @Test
+    @DisplayName("READ | GIVEN base con registros WHEN findAllUsers THEN retorna lista")
+    void findAllUsers_shouldReturnList() {
+        when(usuarioRepository.findAll()).thenReturn(List.of(entidadValida));
+        when(personaMapper.usuariosToDTO(anyList())).thenReturn(List.of(dtoValido));
+
+        List<UsuarioDTO> lista = usuarioService.findAllUsers();
+
+        assertThat(lista).hasSize(1);
+        assertThat(lista.get(0).getEmail()).isEqualTo("juan@example.com");
+    }
+
+    // =========================================================
+    // UPDATE
+    // =========================================================
+
+    @Test
+    @DisplayName("UPDATE | GIVEN ID existente y datos válidos WHEN updateUserProfile THEN retorna DTO actualizado")
+    void updateUserProfile_valid_shouldUpdate() {
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(entidadValida));
+        doAnswer(inv -> {
+            Usuario target = inv.getArgument(0);
+            UsuarioDTO src = inv.getArgument(1);
+            if (src.getNombre() != null) target.setNombre(src.getNombre());
+            if (src.getTelefono() != null) target.setTelefono(src.getTelefono());
+            if (src.getEmail() != null) target.setEmail(src.getEmail());
+            return null;
+        }).when(personaMapper).updateUsuarioFromDTO(any(Usuario.class), any(UsuarioDTO.class));
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(personaMapper.usuarioToDTO(any(Usuario.class))).thenAnswer(inv -> {
+            Usuario u = inv.getArgument(0);
+            UsuarioDTO dto = new UsuarioDTO();
+            dto.setId(u.getId());
+            dto.setNombre(u.getNombre());
+            dto.setEmail(u.getEmail());
+            dto.setTelefono(u.getTelefono());
+            dto.setFechaNacimiento(u.getFechaNacimiento());
+            dto.setRol(u.getRol());
+            return dto;
+        });
+
+        UsuarioDTO cambios = new UsuarioDTO();
+        cambios.setNombre("Nuevo Nombre");
+        cambios.setTelefono("3009876543");
+
+        UsuarioDTO out = usuarioService.updateUserProfile(1L, cambios);
+
+        assertThat(out).isNotNull();
+        assertThat(out.getNombre()).isEqualTo("Nuevo Nombre");
+        assertThat(out.getTelefono()).isEqualTo("3009876543");
         verify(usuarioRepository).save(any(Usuario.class));
     }
 
     @Test
-    @DisplayName("CREATE - Email duplicado debe lanzar IllegalStateException")
-    void registerUser_DuplicateEmail_ShouldThrowException() {
-        when(usuarioRepository.findByEmail(validUsuarioDTO.getEmail())).thenReturn(Optional.of(validUsuario));
-
-        assertThatThrownBy(() -> usuarioService.registerUser(validUsuarioDTO))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("ya está en uso");
-    }
-
-    @Test
-    @DisplayName("CREATE - Email inválido debe lanzar IllegalArgumentException")
-    void registerUser_InvalidEmail_ShouldThrowException() {
-        validUsuarioDTO.setEmail("correo-invalido");
-
-        assertThatThrownBy(() -> usuarioService.registerUser(validUsuarioDTO))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("formato del email no es válido");
-    }
-
-    @Test
-    @DisplayName("CREATE - Contraseña débil debe lanzar IllegalArgumentException")
-    void registerUser_WeakPassword_ShouldThrowException() {
-        validUsuarioDTO.setContrasena("123");
-
-        assertThatThrownBy(() -> usuarioService.registerUser(validUsuarioDTO))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("contraseña debe tener al menos 8 caracteres");
-    }
-
-    @Test
-    @DisplayName("CREATE - Teléfono inválido debe lanzar IllegalArgumentException")
-    void registerUser_InvalidPhone_ShouldThrowException() {
-        validUsuarioDTO.setTelefono("12AB");
-
-        assertThatThrownBy(() -> usuarioService.registerUser(validUsuarioDTO))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("teléfono es obligatorio y debe contener");
-    }
-
-    // ==================== READ ====================
-
-    @Test
-    @DisplayName("READ - Usuario existente debe retornarse")
-    void findUserById_ExistingUser_ShouldReturnDTO() {
-        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(validUsuario));
-        when(personaMapper.usuarioToDTO(validUsuario)).thenReturn(validUsuarioDTO);
-
-        Optional<UsuarioDTO> result = usuarioService.findUserById(1L);
-
-        assertThat(result).isPresent();
-        assertThat(result.get().getEmail()).isEqualTo("juan@example.com");
-    }
-
-    @Test
-    @DisplayName("READ - Todos los usuarios deben retornarse")
-    void findAllUsers_ShouldReturnList() {
-        when(usuarioRepository.findAll()).thenReturn(Arrays.asList(validUsuario));
-        when(personaMapper.usuariosToDTO(anyList())).thenReturn(Arrays.asList(validUsuarioDTO));
-
-        List<UsuarioDTO> result = usuarioService.findAllUsers();
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getEmail()).isEqualTo("juan@example.com");
-    }
-
-    // ==================== UPDATE ====================
-
-    @Test
-    @DisplayName("UPDATE - Usuario existente debe actualizarse")
-    void updateUserProfile_ValidData_ShouldReturnUpdatedDTO() {
-        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(validUsuario));
-        doAnswer(invocation -> {
-            Usuario usuario = invocation.getArgument(0);
-            UsuarioDTO dto = invocation.getArgument(1);
-            usuario.setNombre(dto.getNombre());
-            return null;
-        }).when(personaMapper).updateUsuarioFromDTO(any(Usuario.class), any(UsuarioDTO.class));
-        when(usuarioRepository.save(any(Usuario.class))).thenReturn(validUsuario);
-        when(personaMapper.usuarioToDTO(validUsuario)).thenReturn(validUsuarioDTO);
-
-        validUsuarioDTO.setNombre("Nuevo Nombre");
-        UsuarioDTO result = usuarioService.updateUserProfile(1L, validUsuarioDTO);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getNombre()).isEqualTo("Nuevo Nombre");
-    }
-
-    @Test
-    @DisplayName("UPDATE - Usuario inexistente debe lanzar RuntimeException")
-    void updateUserProfile_NonExistent_ShouldThrowException() {
+    @DisplayName("UPDATE | GIVEN ID inexistente WHEN updateUserProfile THEN RuntimeException")
+    void updateUserProfile_nonExistent_shouldThrow() {
         when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> usuarioService.updateUserProfile(99L, validUsuarioDTO))
+        assertThatThrownBy(() -> usuarioService.updateUserProfile(99L, dtoValido))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Usuario no encontrado");
     }
 
-    // ==================== DELETE ====================
+    @Test
+    @DisplayName("UPDATE | GIVEN email ya usado por otro WHEN updateUserProfile THEN IllegalStateException")
+    void updateUserProfile_emailToExisting_shouldThrow() {
+        // El usuario actual en BD
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(entidadValida));
+
+        // Simula que el nuevo email ya pertenece a OTRO usuario
+        Usuario otro = new Usuario();
+        otro.setId(2L);
+        otro.setEmail("exists@example.com");
+
+        // 👇 MUY IMPORTANTE: stub al método que realmente llama tu service
+        when(usuarioRepository.findByEmail("exists@example.com"))
+                .thenReturn(Optional.of(otro));
+
+        UsuarioDTO cambios = new UsuarioDTO();
+        cambios.setEmail("exists@example.com");
+
+        assertThatThrownBy(() -> usuarioService.updateUserProfile(1L, cambios))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ya está en uso");
+
+        // No debe intentar persistir cambios
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    // =========================================================
+    // DELETE
+    // =========================================================
 
     @Test
-    @DisplayName("DELETE - Usuario existente debe eliminarse")
-    void deleteUser_ExistingId_ShouldDelete() {
+    @DisplayName("DELETE | GIVEN ID existente WHEN deleteUser THEN no lanza excepción y borra")
+    void deleteUser_existing_shouldDelete() {
         when(usuarioRepository.existsById(1L)).thenReturn(true);
 
         assertThatCode(() -> usuarioService.deleteUser(1L)).doesNotThrowAnyException();
-
         verify(usuarioRepository).deleteById(1L);
     }
 
     @Test
-    @DisplayName("DELETE - Usuario inexistente debe lanzar RuntimeException")
-    void deleteUser_NonExistentId_ShouldThrowException() {
+    @DisplayName("DELETE | GIVEN ID inexistente WHEN deleteUser THEN RuntimeException")
+    void deleteUser_nonExistent_shouldThrow() {
         when(usuarioRepository.existsById(99L)).thenReturn(false);
 
         assertThatThrownBy(() -> usuarioService.deleteUser(99L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Usuario no encontrado");
+
+        verify(usuarioRepository, never()).deleteById(anyLong());
     }
 }
 

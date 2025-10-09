@@ -4,7 +4,8 @@ import com.Rently.Business.DTO.AlojamientoDTO;
 import com.Rently.Business.DTO.AnfitrionDTO;
 import com.Rently.Business.DTO.ServicioDTO;
 import com.Rently.Business.Service.AlojamientoService;
-import com.Rently.Persistence.Entity.TipoAlojamiento;
+import com.Rently.Persistence.Entity.Alojamiento;
+import com.Rently.Persistence.Repository.AlojamientoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,9 @@ public class AlojamientoServiceImplIntegrationTest {
 
     @Autowired
     private AlojamientoService alojamientoService;
+
+    @Autowired
+    private AlojamientoRepository alojamientoRepository;
 
     @Autowired
     private TestDataFactory testDataFactory;
@@ -119,11 +123,19 @@ public class AlojamientoServiceImplIntegrationTest {
     }
 
     @Test
-    @DisplayName("DELETE - Alojamiento existente debe eliminarse")
+    @DisplayName("DELETE - Alojamiento existente debe eliminarse (soft delete)")
     void delete_Existing_ShouldDelete() {
+        // act
         boolean eliminado = alojamientoService.delete(alojamiento.getId());
+
+        // assert servicio: ya no debe devolverlo (porque filtra eliminado=false)
         assertThat(eliminado).isTrue();
         assertThat(alojamientoService.findById(alojamiento.getId())).isEmpty();
+
+        // (opcional) assert repositorio: la fila sigue pero marcada como eliminada
+        Alojamiento enBD = alojamientoRepository.findById(alojamiento.getId())
+                .orElseThrow(() -> new AssertionError("Debería existir físicamente (soft delete)"));
+        assertThat(enBD.isEliminado()).isTrue();
     }
 
     @Test

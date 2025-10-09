@@ -1,0 +1,1 @@
+{"uuid":"e8bc4ebb-2c48-4b1d-9bbf-8744daf7a2e1","name":"CREATE - Teléfono inválido debe lanzar IllegalArgumentException","children":["ac8d4b0f-1cc1-4f6a-b58c-516bb1eccc70"],"befores":[],"afters":[],"start":1759768800643,"stop":1759768800660}

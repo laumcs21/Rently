@@ -1,0 +1,1 @@
+{"uuid":"5161d73f-6e38-4964-9e38-c0c42e75b763","name":"CREATE | GIVEN email duplicado WHEN registerUser THEN IllegalStateException","children":["333a3baa-9875-4cc7-a9db-cc4b29f5e460"],"befores":[],"afters":[],"start":1759769524199,"stop":1759769524224}

@@ -1,0 +1,1 @@
+{"uuid":"a9dcaf0e-1309-4dac-9e6b-1d146f044aa8","name":"CREATE - Email inválido debe lanzar IllegalArgumentException","children":["64f3cfbe-979b-4fc2-af91-6a0d1012b139"],"befores":[],"afters":[],"start":1759764778943,"stop":1759764778962}
