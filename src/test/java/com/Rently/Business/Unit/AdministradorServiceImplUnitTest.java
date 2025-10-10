@@ -4,6 +4,7 @@ import com.Rently.Business.DTO.AdministradorDTO;
 import com.Rently.Business.Service.impl.AdministradorServiceImpl;
 import com.Rently.Persistence.DAO.AdministradorDAO;
 import com.Rently.Persistence.Entity.Rol;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -17,11 +18,15 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
 
 class AdministradorServiceImplUnitTest {
 
     @Mock
     private AdministradorDAO administradorDAO;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private AdministradorServiceImpl administradorService;
@@ -36,6 +41,7 @@ class AdministradorServiceImplUnitTest {
         adminDTO.setNombre("Admin User");
         adminDTO.setEmail("admin@example.com");
         adminDTO.setTelefono("3201234567");
+        adminDTO.setContrasena("ClaveAdmin123");
         adminDTO.setFechaNacimiento(LocalDate.of(1990, 1, 1));
         adminDTO.setRol(Rol.ADMINISTRADOR);
     }
@@ -44,14 +50,14 @@ class AdministradorServiceImplUnitTest {
 
     @Test
     void create_ValidData_ReturnsDTO() {
-        when(administradorDAO.crearAdministrador(any(AdministradorDTO.class)))
-                .thenReturn(adminDTO);
+        when(passwordEncoder.encode(any())).thenReturn("hash");
+        when(administradorDAO.crearAdministrador(any(AdministradorDTO.class), anyString())).thenReturn(adminDTO);
 
         AdministradorDTO result = administradorService.create(adminDTO);
 
         assertNotNull(result);
         assertEquals("Admin User", result.getNombre());
-        verify(administradorDAO, times(1)).crearAdministrador(any());
+        verify(administradorDAO, times(1)).crearAdministrador(any(), anyString());
     }
 
     @Test

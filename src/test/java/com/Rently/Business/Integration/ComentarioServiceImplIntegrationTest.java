@@ -5,9 +5,7 @@ import com.Rently.Business.Service.*;
 import com.Rently.Persistence.Repository.UsuarioRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,11 +16,9 @@ import static org.mockito.Mockito.when;
 /**
  * Tests de integración para ComentarioService con autenticación simulada.
  */
-@SpringBootTest
-@ActiveProfiles("test")
 @Import(TestJwtConfig.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class ComentarioServiceImplIntegrationTest {
+class ComentarioServiceImplIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private TestDataFactory factory;

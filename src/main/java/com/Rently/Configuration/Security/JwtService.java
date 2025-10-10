@@ -1,6 +1,6 @@
 package com.Rently.Configuration.Security;
 
-import com.Rently.Persistence.Entity.Usuario;
+import com.Rently.Persistence.Entity.Persona;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -34,10 +34,10 @@ public class JwtService {
         return generateToken(new HashMap<>(), userDetails);
     }
 
-    public String generateToken(Usuario usuario) {
+    public String generateToken(Persona persona) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", usuario.getRol().name());
-        return generateToken(claims, usuario.getEmail());
+        claims.put("role", persona.getRol().name());
+        return generateToken(claims, persona.getEmail());
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {

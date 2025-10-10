@@ -21,7 +21,12 @@ public class AdministradorDAO {
     }
 
     public AdministradorDTO crearAdministrador(AdministradorDTO dto) {
+        return crearAdministrador(dto, dto.getContrasena());
+    }
+
+    public AdministradorDTO crearAdministrador(AdministradorDTO dto, String contrasenaCodificada) {
         Administrador admin = personaMapper.dtoToAdmin(dto);
+        admin.setContrasena(contrasenaCodificada);
         Administrador saved = administradorRepository.save(admin);
         return personaMapper.adminToDTO(saved);
     }

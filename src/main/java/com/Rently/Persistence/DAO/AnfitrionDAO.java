@@ -23,6 +23,7 @@ public class AnfitrionDAO {
 
     public AnfitrionDTO crearAnfitrion(AnfitrionDTO dto) {
         Anfitrion anfitrion = personaMapper.dtoToAnfitrion(dto);
+        anfitrion.setContrasena(dto.getContrasena());
         Anfitrion saved = anfitrionRepository.save(anfitrion);
         return personaMapper.anfitrionToDTO(saved);
     }

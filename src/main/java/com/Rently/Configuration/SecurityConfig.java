@@ -2,8 +2,11 @@ package com.Rently.Configuration;
 
 import com.Rently.Configuration.Security.JwtAuthenticationFilter;
 import com.Rently.Configuration.Security.JwtService;
-import com.Rently.Persistence.Repository.UsuarioRepository;
+import com.Rently.Persistence.Repository.PersonaRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpMethod;
+import org.springframework.boot.autoconfigure.graphql.GraphQlProperties.Http;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -22,15 +25,20 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.Customizer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Collections;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final UsuarioRepository usuarioRepository;
+    private final PersonaRepository personaRepository;
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService,
@@ -47,15 +55,22 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/register",
-                                "/api/administradores/",
+                               // "/api/administradores/",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/"
                         ).permitAll()
+                        .requestMatchers("/api/usuarios/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/usuarios", "/api/usuarios/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios/alojamiento/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/anfitriones", "/api/anfitriones/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/administradores", "/api/administradores/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
@@ -68,12 +83,25 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
     public UserDetailsService userDetailsService() {
-        return username -> usuarioRepository.findByEmail(username)
-                .map(usuario -> new User(
-                        usuario.getEmail(),
-                        usuario.getContrasena(),
-                        Collections.singleton(new SimpleGrantedAuthority(usuario.getRol().name()))
+        return username -> personaRepository.findByEmail(username)
+                .map(persona -> new User(
+                        persona.getEmail(),
+                        persona.getContrasena(),
+                        Collections.singleton(new SimpleGrantedAuthority(persona.getRol().name()))
                 ))
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + username));
     }

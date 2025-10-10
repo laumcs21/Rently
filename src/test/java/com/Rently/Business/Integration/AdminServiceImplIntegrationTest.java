@@ -6,7 +6,6 @@ import com.Rently.Persistence.Entity.Rol;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -16,9 +15,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
 @Transactional
-public class AdminServiceImplIntegrationTest {
+public class AdminServiceImplIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private AdministradorService administradorService;
@@ -33,6 +31,7 @@ public class AdminServiceImplIntegrationTest {
         admin.setTelefono("1234567890");
         admin.setFechaNacimiento(LocalDate.now().minusYears(30));
         admin.setRol(Rol.ADMINISTRADOR);
+        admin.setContrasena("ClaveValida123");
 
         AdministradorDTO guardado = administradorService.create(admin);
 
@@ -51,6 +50,7 @@ public class AdminServiceImplIntegrationTest {
         admin.setTelefono("1234567890");
         admin.setFechaNacimiento(LocalDate.now().minusYears(30));
         admin.setRol(Rol.ADMINISTRADOR);
+        admin.setContrasena("ClaveValida123");
 
         AdministradorDTO guardado = administradorService.create(admin);
         Optional<AdministradorDTO> encontrado = administradorService.findById(guardado.getId());
@@ -70,6 +70,7 @@ public class AdminServiceImplIntegrationTest {
         admin.setTelefono("1234567890");
         admin.setFechaNacimiento(LocalDate.now().minusYears(30));
         admin.setRol(Rol.ADMINISTRADOR);
+        admin.setContrasena("ClaveValida123");
 
         administradorService.create(admin);
 
@@ -95,6 +96,7 @@ public class AdminServiceImplIntegrationTest {
         admin.setTelefono("1234567890");
         admin.setFechaNacimiento(LocalDate.now().minusYears(30));
         admin.setRol(Rol.ADMINISTRADOR);
+        admin.setContrasena("ClaveValida123");
 
         AdministradorDTO guardado = administradorService.create(admin);
 
@@ -125,6 +127,7 @@ public class AdminServiceImplIntegrationTest {
         admin.setTelefono("1234567890");
         admin.setFechaNacimiento(LocalDate.now().minusYears(30));
         admin.setRol(Rol.ADMINISTRADOR);
+        admin.setContrasena("ClaveValida123");
 
         AdministradorDTO guardado = administradorService.create(admin);
         boolean eliminado = administradorService.delete(guardado.getId());

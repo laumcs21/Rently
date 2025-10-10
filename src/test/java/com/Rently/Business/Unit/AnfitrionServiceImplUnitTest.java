@@ -3,6 +3,7 @@ package com.Rently.Business.Unit;
 import com.Rently.Business.DTO.AnfitrionDTO;
 import com.Rently.Business.Service.impl.AnfitrionServiceImpl;
 import com.Rently.Persistence.DAO.AnfitrionDAO;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -24,6 +25,9 @@ class AnfitrionServiceImplUnitTest {
 
     @Mock
     private AnfitrionDAO anfitrionDAO;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private AnfitrionServiceImpl anfitrionService;
@@ -48,6 +52,7 @@ class AnfitrionServiceImplUnitTest {
         anfitrionDTO.setNombre("Carlos Pérez");
         anfitrionDTO.setEmail("carlos@example.com");
         anfitrionDTO.setTelefono("3001234567");
+        anfitrionDTO.setContrasena("ClaveAnfitrion123");
         anfitrionDTO.setFechaNacimiento(LocalDate.of(1990, 5, 10));
     }
 
@@ -55,8 +60,8 @@ class AnfitrionServiceImplUnitTest {
 
     @Test
     void create_ValidData_ReturnsDTO() {
-        when(anfitrionDAO.crearAnfitrion(any(AnfitrionDTO.class)))
-                .thenReturn(anfitrionDTO);
+        when(passwordEncoder.encode(any())).thenReturn("hash");
+        when(anfitrionDAO.crearAnfitrion(any(AnfitrionDTO.class))).thenReturn(anfitrionDTO);
 
         AnfitrionDTO result = anfitrionService.create(anfitrionDTO);
 

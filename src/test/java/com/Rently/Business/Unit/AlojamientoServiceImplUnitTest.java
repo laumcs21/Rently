@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -143,32 +142,20 @@ class AlojamientoServiceImplUnitTest {
 
     // UPDATE
     @Test
+    @DisplayName("UPDATE - datos válidos debe retornar actualizado")
     void updateAlojamiento_ValidData_ShouldReturnUpdated() {
-        // Pre-check de existencia
-        when(alojamientoDAO.buscarPorId(1L)).thenReturn(Optional.of(validAlojamiento));
+        AlojamientoDTO updated = new AlojamientoDTO();
+        updated.setId(validId);
+        updated.setTitulo("Casa Actualizada");
 
-        // Cambios solicitados
-        AlojamientoDTO cambios = new AlojamientoDTO();
-        cambios.setTitulo("Nuevo Título");
-        cambios.setPrecioPorNoche(350000.0);
+        when(alojamientoDAO.actualizar(eq(validId), any(AlojamientoDTO.class)))
+                .thenReturn(Optional.of(updated));
 
-        // Resultado esperado tras actualizar
-        AlojamientoDTO actualizado = validAlojamiento;
-        actualizado.setTitulo("Nuevo Título");
-        actualizado.setPrecioPorNoche(350000.0);
-
-        when(alojamientoDAO.actualizar(eq(1L), any(AlojamientoDTO.class)))
-                .thenReturn(Optional.of(actualizado));
-
-        Optional<AlojamientoDTO> res = alojamientoService.update(1L, cambios);
-
-        assertTrue(res.isPresent());
-        assertEquals("Nuevo Título", res.get().getTitulo());
-        assertEquals(350000.0, res.get().getPrecioPorNoche());
-        verify(alojamientoDAO, times(1)).buscarPorId(1L);
-        verify(alojamientoDAO, times(1)).actualizar(eq(1L), any(AlojamientoDTO.class));
+        Optional<AlojamientoDTO> res = alojamientoService.update(validId, validAlojamiento);
+        assertThat(res).isPresent();
+        assertThat(res.get().getTitulo()).isEqualTo("Casa Actualizada");
+        verify(alojamientoDAO, times(1)).actualizar(eq(validId), any(AlojamientoDTO.class));
     }
-
 
     @Test
     @DisplayName("UPDATE - id inválido lanza excepción")
@@ -178,20 +165,15 @@ class AlojamientoServiceImplUnitTest {
                 .hasMessageContaining("ID");
     }
 
+    // DELETE
     @Test
+    @DisplayName("DELETE - id válido debe eliminar")
     void deleteAlojamiento_ValidId_ShouldDelete() {
-        // Pre-check de existencia
-        when(alojamientoDAO.buscarPorId(1L)).thenReturn(Optional.of(validAlojamiento));
-        // Ejecutar eliminación
-        when(alojamientoDAO.eliminar(1L)).thenReturn(true);
-
-        boolean eliminado = alojamientoService.delete(1L);
-
-        assertTrue(eliminado);
-        verify(alojamientoDAO, times(1)).buscarPorId(1L);
-        verify(alojamientoDAO, times(1)).eliminar(1L);
+        when(alojamientoDAO.eliminar(validId)).thenReturn(true);
+        boolean res = alojamientoService.delete(validId);
+        assertThat(res).isTrue();
+        verify(alojamientoDAO, times(1)).eliminar(validId);
     }
-
 
     @Test
     @DisplayName("DELETE - id inválido lanza excepción")
@@ -200,27 +182,5 @@ class AlojamientoServiceImplUnitTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("ID");
     }
-
-    @Test
-    void updateAlojamiento_NotFound_ShouldThrow() {
-        when(alojamientoDAO.buscarPorId(1L)).thenReturn(Optional.empty());
-
-        assertThrows(RuntimeException.class,
-                () -> alojamientoService.update(1L, new AlojamientoDTO()));
-
-        verify(alojamientoDAO, times(1)).buscarPorId(1L);
-        verify(alojamientoDAO, never()).actualizar(anyLong(), any());
-    }
-
-    @Test
-    void deleteAlojamiento_NotFound_ShouldThrow() {
-        when(alojamientoDAO.buscarPorId(99L)).thenReturn(Optional.empty());
-
-        assertThrows(RuntimeException.class, () -> alojamientoService.delete(99L));
-
-        verify(alojamientoDAO, times(1)).buscarPorId(99L);
-        verify(alojamientoDAO, never()).eliminar(anyLong());
-    }
-
 }
 

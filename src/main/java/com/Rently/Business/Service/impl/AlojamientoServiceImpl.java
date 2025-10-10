@@ -84,13 +84,12 @@ public class AlojamientoServiceImpl implements AlojamientoService {
     public boolean delete(Long id) {
         if (id == null || id <= 0) throw new IllegalArgumentException("ID inválido");
 
-        // verifica existencia real
-        if (alojamientoDAO.buscarPorId(id).isEmpty()) {
+        Optional<AlojamientoDTO> existing = alojamientoDAO.buscarPorId(id);
+        if (existing.isEmpty()) {
             throw new RuntimeException("Alojamiento con ID " + id + " no encontrado");
         }
 
-        boolean ok = alojamientoDAO.eliminar(id);
-        return ok;
+        return alojamientoDAO.eliminar(id);
     }
 
 

@@ -10,8 +10,6 @@ import com.Rently.Persistence.Entity.Usuario;
 import com.Rently.Persistence.Repository.UsuarioRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,10 +20,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests de integración para ReservaService con autenticación simulada.
  */
-@SpringBootTest
-@ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class ReservaServiceImplIntegrationTest {
+class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private TestDataFactory factory;

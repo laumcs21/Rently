@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.Period;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -34,17 +33,12 @@ public class AnfitrionServiceImpl implements AnfitrionService {
      * CREATE - Crear nuevo anfitrión
      */
     @Override
-    public AnfitrionDTO create(AnfitrionDTO dto) {
-        if (dto == null) {
-            throw new IllegalArgumentException("El DTO de creación no puede ser nulo");
-        }
+    public AnfitrionDTO create(AnfitrionDTO anfitrionDTO) {
+        log.info("Creando anfitrión: {}", anfitrionDTO.getEmail());
 
-        log.info("Creando anfitrión: {}", dto.getEmail());
+        validateAnfitrionData(anfitrionDTO);
 
-        validateAnfitrionData(dto);
-        validarFechaNacimientoObligatoriaYMayorDeEdad(dto.getFechaNacimiento());
-
-        return anfitrionDAO.crearAnfitrion(dto);
+        return anfitrionDAO.crearAnfitrion(anfitrionDTO);
     }
 
     /**
@@ -102,42 +96,24 @@ public class AnfitrionServiceImpl implements AnfitrionService {
         return anfitrionDAO.listarTodos();
     }
 
-    // En AnfitrionServiceImpl
     @Override
-    public Optional<AnfitrionDTO> update(Long id, AnfitrionDTO dto) {
-        if (id == null || id <= 0) throw new IllegalArgumentException("ID inválido");
-        if (dto == null) throw new IllegalArgumentException("El DTO de actualización no puede ser nulo");
+    public Optional<AnfitrionDTO> update(Long id, AnfitrionDTO anfitrionDTO) {
+        log.info("Actualizando anfitrión ID: {}", id);
 
-        // ✅ Validaciones de campos OPCIONALES: si vienen, se validan; si no, se omiten.
-        if (dto.getNombre() != null && dto.getNombre().trim().isEmpty()) {
-            throw new IllegalArgumentException("El nombre no puede estar vacío");
-        }
-        if (dto.getEmail() != null && !dto.getEmail().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
-            throw new IllegalArgumentException("El formato del email no es válido");
-        }
-        if (dto.getTelefono() != null && !dto.getTelefono().matches("^\\d{7,15}$")) {
-            throw new IllegalArgumentException("El teléfono es obligatorio y debe contener entre 7 y 15 dígitos numéricos");
-        }
-        if (dto.getFechaNacimiento() != null) {
-            LocalDate hoy = LocalDate.now();
-            if (dto.getFechaNacimiento().isAfter(hoy)) {
-                throw new IllegalArgumentException("La fecha de nacimiento no puede ser futura");
-            }
-            if (dto.getFechaNacimiento().plusYears(18).isAfter(hoy)) {
-                throw new IllegalArgumentException("El anfitrión debe ser mayor de edad (>= 18)");
-            }
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("El ID debe ser válido y mayor que 0");
         }
 
-        // ✅ Pre-check de existencia (RuntimeException si no existe)
-        anfitrionDAO.buscarPorId(id)
-                .orElseThrow(() -> new RuntimeException("Anfitrión con ID " + id + " no existe"));
+        validateAnfitrionUpdateData(anfitrionDTO);
 
-        // Actualizar
-        return anfitrionDAO.actualizarAnfitrion(id, dto)
-                .map(Optional::of)
-                .orElseThrow(() -> new RuntimeException("Anfitrión con ID " + id + " no existe"));
+        Optional<AnfitrionDTO> actualizado = anfitrionDAO.actualizarAnfitrion(id, anfitrionDTO);
+
+        if (actualizado.isEmpty()) {
+            throw new RuntimeException("Anfitrión con ID " + id + " no existe");
+        }
+
+        return actualizado;
     }
-
 
     @Override
     public boolean delete(Long id) {
@@ -200,19 +176,6 @@ public class AnfitrionServiceImpl implements AnfitrionService {
 
         if (dto.getFechaNacimiento() != null && dto.getFechaNacimiento().isAfter(LocalDate.now())) {
             throw new IllegalArgumentException("La fecha de nacimiento no puede estar en el futuro");
-        }
-    }
-
-    private void validarFechaNacimientoObligatoriaYMayorDeEdad(LocalDate fechaNacimiento) {
-        if (fechaNacimiento == null) {
-            throw new IllegalArgumentException("La fecha de nacimiento es obligatoria");
-        }
-        if (fechaNacimiento.isAfter(LocalDate.now())) {
-            throw new IllegalArgumentException("La fecha de nacimiento no puede ser futura");
-        }
-        int edad = Period.between(fechaNacimiento, LocalDate.now()).getYears();
-        if (edad < 18) {
-            throw new IllegalArgumentException("El anfitrión debe ser mayor de edad (>= 18)");
         }
     }
 }

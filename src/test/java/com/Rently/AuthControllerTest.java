@@ -45,43 +45,26 @@ class AuthControllerTest {
 
     @Test
     void testRegisterUser() throws Exception {
-        String email = "test+" + System.currentTimeMillis() + "@example.com";
-
         UsuarioDTO newUser = new UsuarioDTO();
         newUser.setNombre("Test User");
-        newUser.setEmail(email);
-        newUser.setTelefono("3001234567");        // <-- requerido por el servicio
-        newUser.setContrasena("Password123");     // <-- cumple política
+        newUser.setEmail("test@example.com");
+        newUser.setContrasena("password123");
         newUser.setFechaNacimiento(LocalDate.of(1990, 1, 1));
         newUser.setRol(Rol.USUARIO);
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(newUser)))
-                .andExpect(status().isOk())               // si tu endpoint devuelve 201, cámbialo a isCreated()
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isString());
     }
 
     @Test
     void testLoginUser() throws Exception {
-        // 1) Registrar con datos válidos y email único
-        String email = "login+" + System.currentTimeMillis() + "@example.com";
+        // Primero, registrar un usuario para poder hacer login
+        testRegisterUser();
 
-        UsuarioDTO newUser = new UsuarioDTO();
-        newUser.setNombre("Test User");
-        newUser.setEmail(email);
-        newUser.setTelefono("3001234567");
-        newUser.setContrasena("Password123");     // <-- misma contraseña para login
-        newUser.setFechaNacimiento(LocalDate.of(1990, 1, 1));
-        newUser.setRol(Rol.USUARIO);
-
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newUser)))
-                .andExpect(status().isOk());
-
-        // 2) Login con las MISMAS credenciales
-        AuthRequest authRequest = new AuthRequest(email, "Password123");
+        AuthRequest authRequest = new AuthRequest("test@example.com", "password123");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -92,14 +75,11 @@ class AuthControllerTest {
 
     @Test
     void testAccessProtectedEndpointWithToken() throws Exception {
-        // 1) Registrar usuario con email único
-        String email = "secure+" + System.currentTimeMillis() + "@example.com";
-
+        // 1. Registrar un usuario
         UsuarioDTO newUser = new UsuarioDTO();
         newUser.setNombre("Test User");
-        newUser.setEmail(email);
-        newUser.setTelefono("3001234567");
-        newUser.setContrasena("Password123");
+        newUser.setEmail("test@example.com");
+        newUser.setContrasena("password123");
         newUser.setFechaNacimiento(LocalDate.of(1990, 1, 1));
         newUser.setRol(Rol.USUARIO);
 
@@ -108,12 +88,12 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(newUser)))
                 .andExpect(status().isOk());
 
-        // 2) Obtener el usuario real desde la BD por el email dinámico
-        Usuario savedUser = usuarioRepository.findByEmail(email)
+        // 2. Obtener el id real del usuario registrado
+        Usuario savedUser = usuarioRepository.findByEmail("test@example.com")
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado en BD"));
 
-        // 3) Login para obtener token (misma contraseña)
-        AuthRequest authRequest = new AuthRequest(email, "Password123");
+        // 3. Hacer login para obtener el token
+        AuthRequest authRequest = new AuthRequest("test@example.com", "password123");
 
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -124,11 +104,11 @@ class AuthControllerTest {
         String responseString = loginResult.getResponse().getContentAsString();
         String token = objectMapper.readTree(responseString).get("token").asText();
 
-        // 4) Acceder al endpoint protegido con el token
+        // 4. Intentar acceder a un endpoint protegido con el id dinámico
         mockMvc.perform(get("/api/usuarios/{id}", savedUser.getId())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value(email));
+                .andExpect(jsonPath("$.email").value("test@example.com"));
     }
 
     @Test

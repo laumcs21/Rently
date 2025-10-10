@@ -15,6 +15,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -156,6 +158,50 @@ public class ReservaServiceImpl implements ReservaService {
     public List<ReservaDTO> findByAlojamientoId(Long alojamientoId) {
         validateId(alojamientoId);
         return reservaDAO.listarPorAlojamiento(alojamientoId);
+    }
+
+    @Override
+    public ReservaDTO cancelByUser(Long id) {
+        validateId(id);
+
+        ReservaDTO reserva = reservaDAO.buscarPorId(id)
+                .orElseThrow(() -> new RuntimeException("La reserva con ID " + id + " no existe."));
+
+        Persona personaActual = getPersonaActual();
+
+        boolean esAdmin = personaActual instanceof Usuario u && u.getRol() == Rol.ADMINISTRADOR
+                || personaActual instanceof Administrador;
+        boolean esPropietario = personaActual instanceof Usuario u && u.getId().equals(reserva.getUsuarioId());
+
+        if (!esAdmin && !esPropietario) {
+            throw new RuntimeException("No puede cancelar una reserva que no le pertenece.");
+        }
+
+        if (reserva.getEstado() == EstadoReserva.CANCELADA) {
+            return reserva;
+        }
+
+        if (reserva.getEstado() == EstadoReserva.FINALIZADA || reserva.getEstado() == EstadoReserva.RECHAZADA) {
+            throw new IllegalStateException("No es posible cancelar una reserva en el estado actual.");
+        }
+
+        LocalDate fechaInicio = reserva.getFechaInicio();
+        if (fechaInicio == null) {
+            throw new IllegalStateException("La reserva no tiene una fecha de inicio definida.");
+        }
+
+        long horasHastaInicio = ChronoUnit.HOURS.between(LocalDateTime.now(), fechaInicio.atStartOfDay());
+        if (horasHastaInicio < 48) {
+            throw new IllegalStateException("No se pueden cancelar reservas con menos de 48 horas de anticipación");
+        }
+
+        boolean actualizada = reservaDAO.cambiarEstado(id, EstadoReserva.CANCELADA);
+        if (!actualizada) {
+            throw new RuntimeException("No se pudo cancelar la reserva.");
+        }
+
+        reserva.setEstado(EstadoReserva.CANCELADA);
+        return reserva;
     }
 
     @Override

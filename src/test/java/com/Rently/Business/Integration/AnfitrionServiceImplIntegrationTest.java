@@ -7,7 +7,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -16,10 +15,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 
-@SpringBootTest
 @Transactional
 @DisplayName("AnfitrionService - Integration Tests")
-class AnfitrionServiceImplIntegrationTest {
+class AnfitrionServiceImplIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private AnfitrionService anfitrionService;
@@ -40,6 +38,7 @@ class AnfitrionServiceImplIntegrationTest {
         anfitrionBase.setEmail("anfitrion@example.com");
         anfitrionBase.setTelefono("3001234567");
         anfitrionBase.setFechaNacimiento(LocalDate.of(1985, 5, 20));
+        anfitrionBase.setContrasena("ClaveValida123");
 
         anfitrionBase = anfitrionService.create(anfitrionBase);
     }
@@ -54,6 +53,7 @@ class AnfitrionServiceImplIntegrationTest {
         nuevo.setEmail("nuevo@example.com");
         nuevo.setTelefono("3109876543");
         nuevo.setFechaNacimiento(LocalDate.of(1990, 1, 1));
+        nuevo.setContrasena("ClaveValida123");
 
         AnfitrionDTO guardado = anfitrionService.create(nuevo);
 
@@ -70,6 +70,7 @@ class AnfitrionServiceImplIntegrationTest {
         AnfitrionDTO invalido = new AnfitrionDTO();
         invalido.setNombre("Invalid Email");
         invalido.setEmail("correo-invalido");
+        invalido.setContrasena("ClaveValida123");
 
         assertThatThrownBy(() -> anfitrionService.create(invalido))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -83,6 +84,7 @@ class AnfitrionServiceImplIntegrationTest {
         invalido.setNombre("Tel Invalid");
         invalido.setEmail("phone@example.com");
         invalido.setTelefono("abc123");
+        invalido.setContrasena("ClaveValida123");
 
         assertThatThrownBy(() -> anfitrionService.create(invalido))
                 .isInstanceOf(IllegalArgumentException.class)
