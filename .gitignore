@@ -34,3 +34,24 @@ build/
 
 # ignora archivos secretos
 src/main/resources/application.properties
+
+# Maven / build
+target/
+**/jacoco.exec
+*.dump
+*.log
+
+# Allure
+.allure/
+allure-results/
+allure-report/
+target/
+**/jacoco-*.xml
+**/jacoco-*.csv
+**/jacoco-report/
+
+
+# IDE
+.idea/
+*.iml
+.vscode/
