@@ -1,0 +1,1 @@
+{"uuid":"dd0f376b-239d-44e1-8692-9b42a2d04ae1","name":"CREATE | GIVEN contraseña débil WHEN registerUser THEN IllegalArgumentException","children":["64a2ff27-8e28-452c-b559-3492c3fb62fa"],"befores":[],"afters":[],"start":1760144800852,"stop":1760144800864}

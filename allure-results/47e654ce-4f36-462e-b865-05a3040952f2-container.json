@@ -1,0 +1,1 @@
+{"uuid":"47e654ce-4f36-462e-b865-05a3040952f2","name":"CREATE | GIVEN email inválido WHEN registerUser THEN IllegalArgumentException","children":["49180c29-27ec-47c0-8b04-4018301b6c48"],"befores":[],"afters":[],"start":1760145382573,"stop":1760145382582}

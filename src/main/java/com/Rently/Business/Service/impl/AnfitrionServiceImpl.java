@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -34,9 +35,14 @@ public class AnfitrionServiceImpl implements AnfitrionService {
      */
     @Override
     public AnfitrionDTO create(AnfitrionDTO anfitrionDTO) {
-        log.info("Creando anfitrión: {}", anfitrionDTO.getEmail());
+        log.info("Creando anfitrión: {}", anfitrionDTO != null ? anfitrionDTO.getEmail() : "null");
+
+        if (anfitrionDTO == null) {
+            throw new IllegalArgumentException("El DTO no puede ser nulo");
+        }
 
         validateAnfitrionData(anfitrionDTO);
+        validateAge(anfitrionDTO);
 
         return anfitrionDAO.crearAnfitrion(anfitrionDTO);
     }
@@ -96,6 +102,9 @@ public class AnfitrionServiceImpl implements AnfitrionService {
         return anfitrionDAO.listarTodos();
     }
 
+    /**
+     * UPDATE - Actualizar anfitrión existente
+     */
     @Override
     public Optional<AnfitrionDTO> update(Long id, AnfitrionDTO anfitrionDTO) {
         log.info("Actualizando anfitrión ID: {}", id);
@@ -103,18 +112,30 @@ public class AnfitrionServiceImpl implements AnfitrionService {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("El ID debe ser válido y mayor que 0");
         }
+        if (anfitrionDTO == null) {
+            throw new IllegalArgumentException("El DTO no puede ser nulo");
+        }
 
+        // 🔹 Primero validar todo (edad incluida)
         validateAnfitrionUpdateData(anfitrionDTO);
+
+        // 🔹 Si pasó validación (no es menor de edad), recién toca el DAO
+        anfitrionDAO.buscarPorId(id)
+                .orElseThrow(() -> new IllegalArgumentException("Anfitrión con ID " + id + " no encontrado"));
 
         Optional<AnfitrionDTO> actualizado = anfitrionDAO.actualizarAnfitrion(id, anfitrionDTO);
 
         if (actualizado.isEmpty()) {
-            throw new RuntimeException("Anfitrión con ID " + id + " no existe");
+            throw new IllegalArgumentException("Anfitrión con ID " + id + " no existe");
         }
 
         return actualizado;
     }
 
+
+    /**
+     * DELETE - Eliminar anfitrión
+     */
     @Override
     public boolean delete(Long id) {
         log.info("Eliminando anfitrión ID: {}", id);
@@ -126,7 +147,7 @@ public class AnfitrionServiceImpl implements AnfitrionService {
         boolean eliminado = anfitrionDAO.eliminarAnfitrion(id);
 
         if (!eliminado) {
-            throw new RuntimeException("Anfitrión con ID " + id + " no existe");
+            throw new IllegalArgumentException("Anfitrión con ID " + id + " no existe");
         }
 
         return true;
@@ -177,5 +198,18 @@ public class AnfitrionServiceImpl implements AnfitrionService {
         if (dto.getFechaNacimiento() != null && dto.getFechaNacimiento().isAfter(LocalDate.now())) {
             throw new IllegalArgumentException("La fecha de nacimiento no puede estar en el futuro");
         }
+        validateAge(dto);
+    }
+
+    private void validateAge(AnfitrionDTO dto) {
+        if (dto.getFechaNacimiento() == null) {
+            return;
+        }
+
+        int edad = Period.between(dto.getFechaNacimiento(), LocalDate.now()).getYears();
+        if (edad < 18) {
+            throw new IllegalArgumentException("El anfitrión debe ser mayor de edad");
+        }
     }
 }
+

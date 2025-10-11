@@ -48,7 +48,8 @@ class AuthControllerTest {
         UsuarioDTO newUser = new UsuarioDTO();
         newUser.setNombre("Test User");
         newUser.setEmail("test@example.com");
-        newUser.setContrasena("password123");
+        newUser.setContrasena("Password123");
+        newUser.setTelefono("3123456789");
         newUser.setFechaNacimiento(LocalDate.of(1990, 1, 1));
         newUser.setRol(Rol.USUARIO);
 
@@ -64,7 +65,7 @@ class AuthControllerTest {
         // Primero, registrar un usuario para poder hacer login
         testRegisterUser();
 
-        AuthRequest authRequest = new AuthRequest("test@example.com", "password123");
+        AuthRequest authRequest = new AuthRequest("test@example.com", "Password123");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -79,7 +80,8 @@ class AuthControllerTest {
         UsuarioDTO newUser = new UsuarioDTO();
         newUser.setNombre("Test User");
         newUser.setEmail("test@example.com");
-        newUser.setContrasena("password123");
+        newUser.setContrasena("Password123");
+        newUser.setTelefono("3123456789");
         newUser.setFechaNacimiento(LocalDate.of(1990, 1, 1));
         newUser.setRol(Rol.USUARIO);
 
@@ -93,7 +95,7 @@ class AuthControllerTest {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado en BD"));
 
         // 3. Hacer login para obtener el token
-        AuthRequest authRequest = new AuthRequest("test@example.com", "password123");
+        AuthRequest authRequest = new AuthRequest("test@example.com", "Password123");
 
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -1,4 +1,4 @@
-﻿package com.Rently.Application.Controller;
+package com.Rently.Application.Controller;
 
 import java.net.URI;
 import java.time.LocalDate;

@@ -48,6 +48,19 @@ class AlojamientoServiceImplUnitTest {
         validAlojamiento.setAnfitrionId(validHostId);
     }
 
+    // Helper: entidad existente para el pre-check
+    private AlojamientoDTO alojExistente() {
+        AlojamientoDTO dto = new AlojamientoDTO();
+        dto.setId(validId);
+        dto.setTitulo("Casa Bonita");
+        dto.setCiudad("Medellín");
+        dto.setDireccion("Calle 123");
+        dto.setPrecioPorNoche(200.0);
+        dto.setCapacidadMaxima(4);
+        dto.setAnfitrionId(validHostId);
+        return dto;
+    }
+
     // CREATE - happy path
     @Test
     @DisplayName("CREATE - Alojamiento válido debe retornar alojamiento creado")
@@ -142,8 +155,11 @@ class AlojamientoServiceImplUnitTest {
 
     // UPDATE
     @Test
-    @DisplayName("UPDATE - datos válidos debe retornar actualizado")
+    @DisplayName("UPDATE - datos válidos debe retornar actualizado (con pre-check)")
     void updateAlojamiento_ValidData_ShouldReturnUpdated() {
+        // PRE-CHECK de existencia
+        when(alojamientoDAO.buscarPorId(validId)).thenReturn(Optional.of(alojExistente()));
+
         AlojamientoDTO updated = new AlojamientoDTO();
         updated.setId(validId);
         updated.setTitulo("Casa Actualizada");
@@ -152,8 +168,10 @@ class AlojamientoServiceImplUnitTest {
                 .thenReturn(Optional.of(updated));
 
         Optional<AlojamientoDTO> res = alojamientoService.update(validId, validAlojamiento);
+
         assertThat(res).isPresent();
         assertThat(res.get().getTitulo()).isEqualTo("Casa Actualizada");
+        verify(alojamientoDAO, times(1)).buscarPorId(validId);
         verify(alojamientoDAO, times(1)).actualizar(eq(validId), any(AlojamientoDTO.class));
     }
 
@@ -163,15 +181,23 @@ class AlojamientoServiceImplUnitTest {
         assertThatThrownBy(() -> alojamientoService.update(0L, validAlojamiento))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("ID");
+        verify(alojamientoDAO, never()).buscarPorId(anyLong());
+        verify(alojamientoDAO, never()).actualizar(anyLong(), any());
     }
 
     // DELETE
     @Test
-    @DisplayName("DELETE - id válido debe eliminar")
+    @DisplayName("DELETE - id válido debe eliminar (con pre-check)")
     void deleteAlojamiento_ValidId_ShouldDelete() {
+        // PRE-CHECK de existencia
+        when(alojamientoDAO.buscarPorId(validId)).thenReturn(Optional.of(alojExistente()));
+        // Eliminación
         when(alojamientoDAO.eliminar(validId)).thenReturn(true);
+
         boolean res = alojamientoService.delete(validId);
+
         assertThat(res).isTrue();
+        verify(alojamientoDAO, times(1)).buscarPorId(validId);
         verify(alojamientoDAO, times(1)).eliminar(validId);
     }
 
@@ -181,6 +207,9 @@ class AlojamientoServiceImplUnitTest {
         assertThatThrownBy(() -> alojamientoService.delete(0L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("ID");
+        verify(alojamientoDAO, never()).buscarPorId(anyLong());
+        verify(alojamientoDAO, never()).eliminar(anyLong());
     }
 }
+
 
