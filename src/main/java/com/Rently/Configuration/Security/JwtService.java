@@ -68,13 +68,13 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
-private Claims extractAllClaims(String token) {
-    return Jwts.parser()
-            .verifyWith(getSignInKey()) // 1. Usar verifyWith() en lugar de setSigningKey()
-            .build()                   // 2. Construir el parser
-            .parseSignedClaims(token)  // 3. Usar parseSignedClaims()
-            .getPayload();             // 4. Obtener el cuerpo (Claims)
-}
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSignInKey())   // jjwt 0.12
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
     private SecretKey getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);

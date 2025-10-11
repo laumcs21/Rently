@@ -74,6 +74,9 @@ public class AdministradorServiceImpl implements AdministradorService {
 
         validateAdminUpdateData(administradorDTO);
 
+        administradorDAO.buscarPorId(id)
+                .orElseThrow(() -> new RuntimeException("Administrador con ID " + id + " no encontrado"));
+
         Optional<AdministradorDTO> updated = administradorDAO.actualizarAdministrador(id, administradorDTO);
 
         if (updated.isEmpty()) {

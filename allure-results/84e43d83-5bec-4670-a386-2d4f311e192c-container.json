@@ -1,0 +1,1 @@
+{"uuid":"84e43d83-5bec-4670-a386-2d4f311e192c","name":"UPDATE | GIVEN ID existente y datos válidos WHEN updateUserProfile THEN retorna DTO actualizado","children":["fc505ebc-27cf-4473-b5ab-b02c5b713957"],"befores":[],"afters":[],"start":1759798878251,"stop":1759798878266}

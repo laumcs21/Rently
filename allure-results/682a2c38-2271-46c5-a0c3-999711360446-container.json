@@ -1,0 +1,1 @@
+{"uuid":"682a2c38-2271-46c5-a0c3-999711360446","name":"CREATE | GIVEN teléfono con formato inválido WHEN registerUser THEN IllegalArgumentException","children":["61d9dcea-fc5d-4970-9e0e-e2382dc056ee"],"befores":[],"afters":[],"start":1759770462869,"stop":1759770462887}

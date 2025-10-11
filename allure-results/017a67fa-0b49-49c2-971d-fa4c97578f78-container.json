@@ -1,0 +1,1 @@
+{"uuid":"017a67fa-0b49-49c2-971d-fa4c97578f78","name":"CREATE | GIVEN DTO válido WHEN registerUser THEN persiste y encripta contraseña","children":["4ee5d982-c48c-4557-864c-f0c3f0d3593e"],"befores":[],"afters":[],"start":1759800221222,"stop":1759800221245}

@@ -3,12 +3,9 @@ package com.Rently.Business.Service.impl;
 import com.Rently.Business.DTO.AlojamientoDTO;
 import com.Rently.Business.Service.AlojamientoService;
 import com.Rently.Persistence.DAO.AlojamientoDAO;
-import com.Rently.Persistence.Entity.Reserva;
-import com.Rently.Persistence.Repository.ReservaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,12 +14,9 @@ import java.util.Optional;
 public class AlojamientoServiceImpl implements AlojamientoService {
 
     private final AlojamientoDAO alojamientoDAO;
-    private final ReservaRepository reservaRepository;
 
-    public AlojamientoServiceImpl(AlojamientoDAO alojamientoDAO,
-                                  ReservaRepository reservaRepository) {
+    public AlojamientoServiceImpl(AlojamientoDAO alojamientoDAO) {
         this.alojamientoDAO = alojamientoDAO;
-        this.reservaRepository = reservaRepository;
     }
 
     @Override
@@ -93,14 +87,6 @@ public class AlojamientoServiceImpl implements AlojamientoService {
         Optional<AlojamientoDTO> existing = alojamientoDAO.buscarPorId(id);
         if (existing.isEmpty()) {
             throw new RuntimeException("Alojamiento con ID " + id + " no encontrado");
-        }
-
-        List<Reserva> reservas = reservaRepository.findByAlojamientoId(id);
-        LocalDate today = LocalDate.now();
-        boolean tieneReservasFuturas = reservas.stream()
-                .anyMatch(reserva -> reserva.getFechaFin().isAfter(today));
-        if (tieneReservasFuturas) {
-            throw new IllegalStateException("No se puede eliminar alojamiento con reservas futuras");
         }
 
         return alojamientoDAO.eliminar(id);

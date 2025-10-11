@@ -80,6 +80,65 @@ class AdministradorServiceImplUnitTest {
         verify(administradorDAO, never()).crearAdministrador(any());
     }
 
+    // NUEVOS: create con DTO nulo / nombre vacío / rol nulo / teléfono inválido / fecha futura / menor de edad
+    @Test
+    void create_NullDTO_ThrowsException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.create(null));
+
+        verify(administradorDAO, never()).crearAdministrador(any());
+    }
+
+    @Test
+    void create_NameEmpty_ThrowsException() {
+        adminDTO.setNombre("   ");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.create(adminDTO));
+
+        verify(administradorDAO, never()).crearAdministrador(any());
+    }
+
+    @Test
+    void create_NullRole_ThrowsException() {
+        adminDTO.setRol(null);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.create(adminDTO));
+
+        verify(administradorDAO, never()).crearAdministrador(any());
+    }
+
+    @Test
+    void create_InvalidPhone_ThrowsException() {
+        adminDTO.setTelefono("12AB");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.create(adminDTO));
+
+        verify(administradorDAO, never()).crearAdministrador(any());
+    }
+
+    @Test
+    void create_FutureBirthDate_ThrowsException() {
+        adminDTO.setFechaNacimiento(LocalDate.now().plusDays(1));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.create(adminDTO));
+
+        verify(administradorDAO, never()).crearAdministrador(any());
+    }
+
+    @Test
+    void create_Underage_ThrowsException() {
+        adminDTO.setFechaNacimiento(LocalDate.now().minusYears(17));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.create(adminDTO));
+
+        verify(administradorDAO, never()).crearAdministrador(any());
+    }
+
     // ================== FIND ==================
 
     @Test
@@ -97,6 +156,17 @@ class AdministradorServiceImplUnitTest {
     void findById_InvalidId_ThrowsException() {
         assertThrows(IllegalArgumentException.class,
                 () -> administradorService.findById(0L));
+    }
+
+    // NUEVO: ID válido pero no encontrado
+    @Test
+    void findById_NotFound_ReturnsEmpty() {
+        when(administradorDAO.buscarPorId(99L)).thenReturn(Optional.empty());
+
+        Optional<AdministradorDTO> result = administradorService.findById(99L);
+
+        assertTrue(result.isEmpty());
+        verify(administradorDAO, times(1)).buscarPorId(99L);
     }
 
     @Test
@@ -117,6 +187,18 @@ class AdministradorServiceImplUnitTest {
                 () -> administradorService.findByEmail("invalido"));
     }
 
+    // NUEVO: email válido pero no encontrado
+    @Test
+    void findByEmail_NotFound_ReturnsEmpty() {
+        when(administradorDAO.buscarPorEmail("noadmin@example.com"))
+                .thenReturn(Optional.empty());
+
+        Optional<AdministradorDTO> result = administradorService.findByEmail("noadmin@example.com");
+
+        assertTrue(result.isEmpty());
+        verify(administradorDAO, times(1)).buscarPorEmail("noadmin@example.com");
+    }
+
     @Test
     void findAll_ReturnsList() {
         when(administradorDAO.listarTodos()).thenReturn(List.of(adminDTO));
@@ -127,10 +209,26 @@ class AdministradorServiceImplUnitTest {
         verify(administradorDAO, times(1)).listarTodos();
     }
 
+    // NUEVO: lista vacía
+    @Test
+    void findAll_Empty_ReturnsEmptyList() {
+        when(administradorDAO.listarTodos()).thenReturn(List.of());
+
+        List<AdministradorDTO> result = administradorService.findAll();
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(administradorDAO, times(1)).listarTodos();
+    }
+
     // ================== UPDATE ==================
 
     @Test
     void update_ValidData_ReturnsDTO() {
+        // Pre-check de existencia que hace el service
+        when(administradorDAO.buscarPorId(1L)).thenReturn(Optional.of(adminDTO));
+
+        // Actualización
         when(administradorDAO.actualizarAdministrador(eq(1L), any(AdministradorDTO.class)))
                 .thenReturn(Optional.of(adminDTO));
 
@@ -138,8 +236,11 @@ class AdministradorServiceImplUnitTest {
 
         assertTrue(result.isPresent());
         assertEquals("Admin User", result.get().getNombre());
+
+        verify(administradorDAO, times(1)).buscarPorId(1L);
         verify(administradorDAO, times(1)).actualizarAdministrador(eq(1L), any());
     }
+
 
     @Test
     void update_InvalidEmail_ThrowsException() {
@@ -161,6 +262,77 @@ class AdministradorServiceImplUnitTest {
         verify(administradorDAO, never()).actualizarAdministrador(any(), any());
     }
 
+    // NUEVOS: id inválido / DTO nulo / nombre vacío / teléfono inválido / fecha futura / menor de edad / no encontrado
+    @Test
+    void update_InvalidId_ThrowsException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.update(0L, adminDTO));
+
+        verify(administradorDAO, never()).actualizarAdministrador(any(), any());
+    }
+
+    @Test
+    void update_NullDTO_ThrowsException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.update(1L, null));
+
+        verify(administradorDAO, never()).actualizarAdministrador(any(), any());
+    }
+
+    @Test
+    void update_NameEmpty_ThrowsException() {
+        adminDTO.setNombre("   ");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.update(1L, adminDTO));
+
+        verify(administradorDAO, never()).actualizarAdministrador(any(), any());
+    }
+
+    @Test
+    void update_InvalidPhone_ThrowsException() {
+        adminDTO.setTelefono("xx");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.update(1L, adminDTO));
+
+        verify(administradorDAO, never()).actualizarAdministrador(any(), any());
+    }
+
+    @Test
+    void update_FutureBirthDate_ThrowsException() {
+        adminDTO.setFechaNacimiento(LocalDate.now().plusDays(1));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.update(1L, adminDTO));
+
+        verify(administradorDAO, never()).actualizarAdministrador(any(), any());
+    }
+
+    @Test
+    void update_Underage_ThrowsException() {
+        adminDTO.setFechaNacimiento(LocalDate.now().minusYears(17));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> administradorService.update(1L, adminDTO));
+
+        verify(administradorDAO, never()).actualizarAdministrador(any(), any());
+    }
+
+    @Test
+    void update_NotFound_ShouldThrowException() {
+        // El service hace un pre-check: busca por ID y si no existe, lanza excepción.
+        when(administradorDAO.buscarPorId(1L)).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class,
+                () -> administradorService.update(1L, adminDTO));
+
+        // Al no existir, no debe intentar actualizar
+        verify(administradorDAO, never()).actualizarAdministrador(any(), any());
+        verify(administradorDAO, times(1)).buscarPorId(1L);
+    }
+
+
     // ================== DELETE ==================
 
     @Test
@@ -179,6 +351,17 @@ class AdministradorServiceImplUnitTest {
                 () -> administradorService.delete(0L));
 
         verify(administradorDAO, never()).eliminarAdministrador(any());
+    }
+
+    // NUEVO: id válido pero inexistente -> asume que el servicio lanza excepción si DAO devuelve false
+    @Test
+    void delete_NonExistentId_ThrowsException() {
+        when(administradorDAO.eliminarAdministrador(99L)).thenReturn(false);
+
+        assertThrows(RuntimeException.class,
+                () -> administradorService.delete(99L));
+
+        verify(administradorDAO, times(1)).eliminarAdministrador(99L);
     }
 }
 

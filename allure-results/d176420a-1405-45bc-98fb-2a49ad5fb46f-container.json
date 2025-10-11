@@ -1,0 +1,1 @@
+{"uuid":"d176420a-1405-45bc-98fb-2a49ad5fb46f","name":"CREATE - Precio negativo debe lanzar IllegalArgumentException","children":["2eaecd78-d38f-485f-a19a-23c45fc35a5a"],"befores":[],"afters":[],"start":1759800787726,"stop":1759800787733}

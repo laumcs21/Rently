@@ -51,7 +51,7 @@ public class AlojamientoDAO {
         // Guardar alojamiento
         Alojamiento saved = alojamientoRepository.save(alojamiento);
 
-        // 🔹 Recargar para asegurar que se carguen relaciones ManyToMany
+        // Recargar para asegurar relaciones
         Alojamiento fullyLoaded = alojamientoRepository.findById(saved.getId())
                 .orElseThrow(() -> new RuntimeException("Alojamiento no encontrado"));
 
@@ -59,10 +59,11 @@ public class AlojamientoDAO {
     }
 
     public Optional<AlojamientoDTO> actualizar(Long id, AlojamientoDTO dto) {
-        return alojamientoRepository.findById(id).map(alojamiento -> {
+        // 🔒 No permitir actualizar registros soft-deleted
+        return alojamientoRepository.findByIdAndEliminadoFalse(id).map(alojamiento -> {
             alojamientoMapper.updateFromDTO(alojamiento, dto);
 
-            // Actualizar servicios si vienen IDs
+            // Actualizar servicios si vienen IDs (null = no tocar)
             if (dto.getServiciosId() != null) {
                 List<Servicio> servicios = servicioRepository.findAllById(dto.getServiciosId());
                 alojamiento.setServicios(servicios);
@@ -73,22 +74,21 @@ public class AlojamientoDAO {
         });
     }
 
-    // Los demás métodos se mantienen igual
+    // ======= LECTURAS (todas filtran eliminado=false) =======
+
     public Optional<AlojamientoDTO> buscarPorId(Long id) {
-        return alojamientoRepository.findById(id)
+        return alojamientoRepository.findByIdAndEliminadoFalse(id)
                 .map(alojamientoMapper::toDTO);
     }
 
+    /** Suele ser lo que tu capa de servicio expone como "findAll" en los tests */
     public List<AlojamientoDTO> listarTodos() {
-        return alojamientoMapper.toDTOList(alojamientoRepository.findAll());
+        return alojamientoMapper.toDTOList(alojamientoRepository.findAllByEliminadoFalse());
     }
 
+    /** Si quieres mantener un "listarActivos" separado, no uses stream; consulta filtrada en BD */
     public List<AlojamientoDTO> listarActivos() {
-        return alojamientoMapper.toDTOList(
-                alojamientoRepository.findAll().stream()
-                        .filter(a -> !a.isEliminado())
-                        .toList()
-        );
+        return alojamientoMapper.toDTOList(alojamientoRepository.findAllByEliminadoFalse());
     }
 
     public List<AlojamientoDTO> buscarPorCiudad(String ciudad) {
@@ -96,20 +96,27 @@ public class AlojamientoDAO {
     }
 
     public List<AlojamientoDTO> buscarPorPrecio(Double min, Double max) {
-        return alojamientoMapper.toDTOList(alojamientoRepository.findByPrecioPorNocheBetweenAndEliminadoFalse(min, max));
+        return alojamientoMapper.toDTOList(
+                alojamientoRepository.findByPrecioPorNocheBetweenAndEliminadoFalse(min, max)
+        );
     }
 
     public List<AlojamientoDTO> buscarPorAnfitrion(Long anfitrionId) {
-        return alojamientoMapper.toDTOList(alojamientoRepository.findByAnfitrionId(anfitrionId));
+        return alojamientoMapper.toDTOList(
+                alojamientoRepository.findByAnfitrionIdAndEliminadoFalse(anfitrionId)
+        );
     }
+
+    // ======= SOFT DELETE =======
 
     public boolean eliminar(Long id) {
         return alojamientoRepository.findById(id).map(alojamiento -> {
-            alojamiento.setEliminado(true);  // ← Soft delete
-            alojamientoRepository.save(alojamiento);
+            if (!alojamiento.isEliminado()) {
+                alojamiento.setEliminado(true);
+                alojamientoRepository.save(alojamiento);
+            }
             return true;
         }).orElse(false);
     }
-
-
 }
+

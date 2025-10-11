@@ -81,28 +81,40 @@ public class UsuarioServiceImpl implements UsuarioService {
         return personaMapper.usuariosToDTO(usuarioRepository.findAll());
     }
 
+    @Transactional
     @Override
-    public UsuarioDTO updateUserProfile(Long id, UsuarioDTO usuarioDTO) {
+    public UsuarioDTO updateUserProfile(Long id, UsuarioDTO cambios) {
         log.info("Actualizando usuario con ID {}", id);
 
-        Usuario existingUser = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Validaciones parciales (solo lo que viene en el DTO)
-        validateUserUpdateData(usuarioDTO);
+        String emailActual = usuario.getEmail();
 
-        // Actualizar datos con mapper
-        personaMapper.updateUsuarioFromDTO(existingUser, usuarioDTO);
+        // Aplica cambios (el mapper puede tocar email, pero validamos con el DTO 'cambios')
+        personaMapper.updateUsuarioFromDTO(usuario, cambios);
 
-        // Si hay contraseña nueva, encriptar
-        if (usuarioDTO.getContrasena() != null && !usuarioDTO.getContrasena().isEmpty()) {
-            existingUser.setContrasena(passwordEncoder.encode(usuarioDTO.getContrasena()));
+        // VALIDACIÓN DE UNICIDAD DE EMAIL (sólo si viene y es distinto al actual)
+        if (cambios.getEmail() != null && !cambios.getEmail().isBlank()) {
+            String nuevoEmail = cambios.getEmail().trim();
+
+            if (!nuevoEmail.equalsIgnoreCase(emailActual)) {
+                usuarioRepository.findByEmail(nuevoEmail)
+                        .filter(otro -> !otro.getId().equals(usuario.getId()))
+                        .ifPresent(otro -> {
+                            throw new IllegalStateException("El email ya está en uso");
+                        });
+
+                // Si quieres normalizar (opcional):
+                // nuevoEmail = nuevoEmail.toLowerCase(Locale.ROOT);
+
+                usuario.setEmail(nuevoEmail);
+            }
         }
 
-        Usuario updatedUsuario = usuarioRepository.save(existingUser);
-
-        log.info("Usuario actualizado con éxito. ID {}", id);
-        return personaMapper.usuarioToDTO(updatedUsuario);
+        Usuario guardado = usuarioRepository.save(usuario);
+        log.info("Usuario actualizado con éxito. ID {}", guardado.getId());
+        return personaMapper.usuarioToDTO(guardado);
     }
 
     @Override

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,7 +17,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class AlojamientoServiceImplIntegrationTest extends BaseIntegrationTest {
+@SpringBootTest
+public class AlojamientoServiceImplIntegrationTest {
 
     @Autowired
     private AlojamientoService alojamientoService;
@@ -121,9 +123,7 @@ public class AlojamientoServiceImplIntegrationTest extends BaseIntegrationTest {
     void delete_Existing_ShouldDelete() {
         boolean eliminado = alojamientoService.delete(alojamiento.getId());
         assertThat(eliminado).isTrue();
-        Optional<AlojamientoDTO> eliminadoDto = alojamientoService.findById(alojamiento.getId());
-        assertThat(eliminadoDto).isPresent();
-        assertThat(eliminadoDto.get().isEliminado()).isTrue();
+        assertThat(alojamientoService.findById(alojamiento.getId())).isEmpty();
     }
 
     @Test
