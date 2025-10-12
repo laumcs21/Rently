@@ -60,17 +60,18 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
-                                "/api/auth/login",
-                                "/api/auth/register",
-                               // "/api/administradores/",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/"
+                                "/api/auth/**"
                         ).permitAll()
                         .requestMatchers("/api/usuarios/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/usuarios", "/api/usuarios/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/alojamiento/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/anfitriones", "/api/anfitriones/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/administradores", "/api/administradores/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/auth/password/forgot",
+                                "/api/auth/password/reset"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
