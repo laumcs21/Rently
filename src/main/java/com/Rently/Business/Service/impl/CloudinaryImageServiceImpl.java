@@ -9,15 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Map;
-import java.util.Objects;
 
-/**
- * Implementación del ImageService que utiliza Cloudinary como proveedor.
- */
 @Service
 @RequiredArgsConstructor
 public class CloudinaryImageServiceImpl implements ImageService {
@@ -27,28 +20,8 @@ public class CloudinaryImageServiceImpl implements ImageService {
     @Value("${cloudinary.base-folder:rently}")
     private String baseFolder;
 
-
-
     @Override
-    public Map upload(MultipartFile multipartFile) throws IOException {
-        File file = convert(multipartFile);
-        try {
-            return cloudinary.uploader().upload(file, ObjectUtils.emptyMap());
-        } finally {
-            // elimina el temporal pase lo que pase
-            if (file != null && file.exists()) file.delete();
-        }
-    }
-
-    @Override
-    public Map delete(String publicId) throws IOException {
-        return cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
-    }
-
-
-
-    @Override
-    public Upload uploadImage(MultipartFile file, String folder, String publicIdHint) throws IOException {
+    public Upload uploadImage(MultipartFile file, String folder, String publicIdHint) throws Exception {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("El archivo de imagen es obligatorio.");
         }
@@ -57,44 +30,42 @@ public class CloudinaryImageServiceImpl implements ImageService {
 
         Map<String, Object> params = ObjectUtils.asMap(
                 "folder", folderPath,
+                "overwrite", true,
                 "resource_type", "image",
                 "use_filename", true,
-                "unique_filename", true,
-                "overwrite", true
+                "unique_filename", true
         );
-
         if (StringUtils.isNotBlank(publicIdHint)) {
             params.put("public_id", publicIdHint);
         }
 
-        // Subimos desde bytes (evita temporales)
-        Map<?, ?> res = cloudinary.uploader().upload(file.getBytes(), params);
+        Map<?, ?> upload = cloudinary.uploader().upload(file.getBytes(), params);
 
-        return new Upload(
-                (String) res.get("secure_url"),
-                (String) res.get("public_id"),
-                (String) res.get("format")
-        );
+        String url = (String) upload.get("secure_url");
+        String publicId = (String) upload.get("public_id");
+        String format = (String) upload.get("format");
+
+        return new Upload(url, publicId, format);
     }
 
     @Override
-    public void deleteByPublicId(String publicId) throws IOException {
+    public void deleteByPublicId(String publicId) throws Exception {
         if (StringUtils.isNotBlank(publicId)) {
             cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
         }
     }
 
-
-    /* -------------------- Utilidad interna -------------------- */
-
-    private File convert(MultipartFile multipartFile) throws IOException {
-        File file = new File(Objects.requireNonNullElse(
-                multipartFile.getOriginalFilename(),
-                "upload_" + System.nanoTime()
-        ));
-        try (FileOutputStream fo = new FileOutputStream(file)) {
-            fo.write(multipartFile.getBytes());
+    @Override
+    public String tryExtractPublicId(String url) {
+        if (StringUtils.isBlank(url)) return null;
+        try {
+            String path = url.substring(url.indexOf("/upload/") + 8);
+            if (path.startsWith("v")) path = path.substring(path.indexOf("/") + 1);
+            int dot = path.lastIndexOf(".");
+            if (dot > 0) path = path.substring(0, dot);
+            return path; // p.ej. rently/perfiles/persona_15
+        } catch (Exception e) {
+            return null;
         }
-        return file;
     }
 }

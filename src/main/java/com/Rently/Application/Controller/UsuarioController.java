@@ -37,6 +37,7 @@ import com.Rently.Business.Service.ComentarioService;
 import com.Rently.Business.Service.ReservaService;
 import com.Rently.Business.Service.UsuarioService;
 import com.Rently.Persistence.Entity.EstadoReserva;
+import com.Rently.Business.Service.FotoPerfilService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -45,17 +46,22 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 
 @RestController
 @RequestMapping("/api/usuarios")
 @Tag(name = "Usuarios", description = "Operaciones relacionadas con la gestión de usuarios, búsquedas, reservas y comentarios")
 public class UsuarioController {
 
+
     private final UsuarioService usuarioService;
     private final AuthService authService;
     private final ReservaService reservaService;
     private final ComentarioService comentarioService;
     private final AlojamientoService alojamientoService;
+    private FotoPerfilService fotoPerfilService;
 
     public UsuarioController(UsuarioService usuarioService,
                              AuthService authService,
@@ -142,6 +148,20 @@ public class UsuarioController {
     public ResponseEntity<Void> eliminarUsuario(
             @Parameter(description = "ID del usuario", example = "1") @PathVariable Long id) {
         usuarioService.deleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
+    @PostMapping(path = "/{id}/foto-perfil", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> actualizarFotoPerfilUsuario(
+            @PathVariable Long id,
+            @RequestPart("file") MultipartFile file) throws Exception {
+
+        String url = fotoPerfilService.actualizarFotoPerfil(id, file);
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
+    @DeleteMapping("/{id}/foto-perfil")
+    public ResponseEntity<Void> eliminarFotoPerfilUsuario(@PathVariable Long id) throws Exception {
+        fotoPerfilService.eliminarFotoPerfil(id);
         return ResponseEntity.noContent().build();
     }
 

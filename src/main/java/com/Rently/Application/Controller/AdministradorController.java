@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,12 +33,16 @@ import com.Rently.Business.DTO.UsuarioDTO;
 import com.Rently.Business.Service.AdministradorService;
 import com.Rently.Business.Service.AlojamientoService;
 import com.Rently.Business.Service.UsuarioService;
+import com.Rently.Business.Service.FotoPerfilService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 
 @RestController
 @RequestMapping("/api/administradores")
@@ -47,6 +52,7 @@ public class AdministradorController {
     private final AdministradorService administradorService;
     private final UsuarioService usuarioService;
     private final AlojamientoService alojamientoService;
+    private  FotoPerfilService fotoPerfilService;
 
     public AdministradorController(AdministradorService administradorService,
                                    UsuarioService usuarioService,
@@ -127,6 +133,21 @@ public class AdministradorController {
     })
     public ResponseEntity<Void> eliminarAdministrador(
             @Parameter(description = "ID del administrador", example = "1") @PathVariable Long id) {
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(path = "/{id}/foto-perfil", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> actualizarFotoPerfilAdministrador(
+            @PathVariable Long id,
+            @RequestPart("file") MultipartFile file) throws Exception {
+
+        String url = fotoPerfilService.actualizarFotoPerfil(id, file);
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
+    @DeleteMapping("/{id}/foto-perfil")
+    public ResponseEntity<Void> eliminarFotoPerfilAdministrador(@PathVariable Long id) throws Exception {
+        fotoPerfilService.eliminarFotoPerfil(id);
         return ResponseEntity.noContent().build();
     }
 
