@@ -1,8 +1,11 @@
 package com.Rently.Business.Service.impl;
 
-import com.cloudinary.Cloudinary;
 import com.Rently.Business.Service.ImageService;
+import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,42 +19,82 @@ import java.util.Objects;
  * Implementación del ImageService que utiliza Cloudinary como proveedor.
  */
 @Service
+@RequiredArgsConstructor
 public class CloudinaryImageServiceImpl implements ImageService {
 
     private final Cloudinary cloudinary;
 
-    public CloudinaryImageServiceImpl(Cloudinary cloudinary) {
-        this.cloudinary = cloudinary;
-    }
+    @Value("${cloudinary.base-folder:rently}")
+    private String baseFolder;
+
+
 
     @Override
     public Map upload(MultipartFile multipartFile) throws IOException {
-        // Convierte el MultipartFile a un archivo temporal
         File file = convert(multipartFile);
-        // Sube el archivo a Cloudinary y obtiene el resultado
-        Map result = cloudinary.uploader().upload(file, ObjectUtils.emptyMap());
-        // Elimina el archivo temporal después de la subida
-        file.delete();
-        return result;
+        try {
+            return cloudinary.uploader().upload(file, ObjectUtils.emptyMap());
+        } finally {
+            // elimina el temporal pase lo que pase
+            if (file != null && file.exists()) file.delete();
+        }
     }
 
     @Override
     public Map delete(String publicId) throws IOException {
-        // Elimina una imagen de Cloudinary usando su public_id
         return cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
     }
 
-    /**
-     * Convierte un MultipartFile a un objeto File para que la API de Cloudinary pueda procesarlo.
-     * @param multipartFile El archivo recibido en la petición.
-     * @return Un objeto File.
-     * @throws IOException Si ocurre un error en la conversión.
-     */
+
+
+    @Override
+    public Upload uploadImage(MultipartFile file, String folder, String publicIdHint) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("El archivo de imagen es obligatorio.");
+        }
+
+        String folderPath = StringUtils.isBlank(folder) ? baseFolder : (baseFolder + "/" + folder);
+
+        Map<String, Object> params = ObjectUtils.asMap(
+                "folder", folderPath,
+                "resource_type", "image",
+                "use_filename", true,
+                "unique_filename", true,
+                "overwrite", true
+        );
+
+        if (StringUtils.isNotBlank(publicIdHint)) {
+            params.put("public_id", publicIdHint);
+        }
+
+        // Subimos desde bytes (evita temporales)
+        Map<?, ?> res = cloudinary.uploader().upload(file.getBytes(), params);
+
+        return new Upload(
+                (String) res.get("secure_url"),
+                (String) res.get("public_id"),
+                (String) res.get("format")
+        );
+    }
+
+    @Override
+    public void deleteByPublicId(String publicId) throws IOException {
+        if (StringUtils.isNotBlank(publicId)) {
+            cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+        }
+    }
+
+
+    /* -------------------- Utilidad interna -------------------- */
+
     private File convert(MultipartFile multipartFile) throws IOException {
-        File file = new File(Objects.requireNonNull(multipartFile.getOriginalFilename()));
-        FileOutputStream fo = new FileOutputStream(file);
-        fo.write(multipartFile.getBytes());
-        fo.close();
+        File file = new File(Objects.requireNonNullElse(
+                multipartFile.getOriginalFilename(),
+                "upload_" + System.nanoTime()
+        ));
+        try (FileOutputStream fo = new FileOutputStream(file)) {
+            fo.write(multipartFile.getBytes());
+        }
         return file;
     }
 }
