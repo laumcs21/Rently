@@ -1,57 +1,71 @@
 package com.Rently.Business.Service.impl;
 
-import com.cloudinary.Cloudinary;
 import com.Rently.Business.Service.ImageService;
+import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Map;
-import java.util.Objects;
 
-/**
- * Implementación del ImageService que utiliza Cloudinary como proveedor.
- */
 @Service
+@RequiredArgsConstructor
 public class CloudinaryImageServiceImpl implements ImageService {
 
     private final Cloudinary cloudinary;
 
-    public CloudinaryImageServiceImpl(Cloudinary cloudinary) {
-        this.cloudinary = cloudinary;
+    @Value("${cloudinary.base-folder:rently}")
+    private String baseFolder;
+
+    @Override
+    public Upload uploadImage(MultipartFile file, String folder, String publicIdHint) throws Exception {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("El archivo de imagen es obligatorio.");
+        }
+
+        String folderPath = StringUtils.isBlank(folder) ? baseFolder : (baseFolder + "/" + folder);
+
+        Map<String, Object> params = ObjectUtils.asMap(
+                "folder", folderPath,
+                "overwrite", true,
+                "resource_type", "image",
+                "use_filename", true,
+                "unique_filename", true
+        );
+        if (StringUtils.isNotBlank(publicIdHint)) {
+            params.put("public_id", publicIdHint);
+        }
+
+        Map<?, ?> upload = cloudinary.uploader().upload(file.getBytes(), params);
+
+        String url = (String) upload.get("secure_url");
+        String publicId = (String) upload.get("public_id");
+        String format = (String) upload.get("format");
+
+        return new Upload(url, publicId, format);
     }
 
     @Override
-    public Map upload(MultipartFile multipartFile) throws IOException {
-        // Convierte el MultipartFile a un archivo temporal
-        File file = convert(multipartFile);
-        // Sube el archivo a Cloudinary y obtiene el resultado
-        Map result = cloudinary.uploader().upload(file, ObjectUtils.emptyMap());
-        // Elimina el archivo temporal después de la subida
-        file.delete();
-        return result;
+    public void deleteByPublicId(String publicId) throws Exception {
+        if (StringUtils.isNotBlank(publicId)) {
+            cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+        }
     }
 
     @Override
-    public Map delete(String publicId) throws IOException {
-        // Elimina una imagen de Cloudinary usando su public_id
-        return cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
-    }
-
-    /**
-     * Convierte un MultipartFile a un objeto File para que la API de Cloudinary pueda procesarlo.
-     * @param multipartFile El archivo recibido en la petición.
-     * @return Un objeto File.
-     * @throws IOException Si ocurre un error en la conversión.
-     */
-    private File convert(MultipartFile multipartFile) throws IOException {
-        File file = new File(Objects.requireNonNull(multipartFile.getOriginalFilename()));
-        FileOutputStream fo = new FileOutputStream(file);
-        fo.write(multipartFile.getBytes());
-        fo.close();
-        return file;
+    public String tryExtractPublicId(String url) {
+        if (StringUtils.isBlank(url)) return null;
+        try {
+            String path = url.substring(url.indexOf("/upload/") + 8);
+            if (path.startsWith("v")) path = path.substring(path.indexOf("/") + 1);
+            int dot = path.lastIndexOf(".");
+            if (dot > 0) path = path.substring(0, dot);
+            return path; // p.ej. rently/perfiles/persona_15
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

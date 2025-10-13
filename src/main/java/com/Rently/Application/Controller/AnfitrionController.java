@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,22 +36,27 @@ import com.Rently.Business.Service.ComentarioService;
 import com.Rently.Business.Service.ReservaService;
 import com.Rently.Business.Service.AlojamientoService;
 import com.Rently.Persistence.Entity.EstadoReserva;
+import com.Rently.Business.Service.FotoPerfilService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/anfitriones")
 @Tag(name = "Anfitriones", description = "Operaciones relacionadas con la gestión de anfitriones y sus alojamientos")
 public class AnfitrionController {
 
+
     private final AnfitrionService anfitrionService;
     private final AlojamientoService alojamientoService;
     private final ComentarioService comentarioService;
     private final ReservaService reservaService;
+    private FotoPerfilService fotoPerfilService;
 
     public AnfitrionController(AnfitrionService anfitrionService,
                                AlojamientoService alojamientoService,
@@ -141,6 +147,23 @@ public class AnfitrionController {
             @Parameter(description = "Fecha de fin para métricas") @RequestParam(required = false) LocalDate fechaFin) {
         return ResponseEntity.ok(null);
     }
+
+    @PostMapping(path = "/{id}/foto-perfil", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> actualizarFotoPerfilAnfitrion(
+            @PathVariable Long id,
+            @RequestPart("file") MultipartFile file) throws Exception {
+
+        String url = fotoPerfilService.actualizarFotoPerfil(id, file);
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
+    @DeleteMapping("/{id}/foto-perfil")
+    public ResponseEntity<Void> eliminarFotoPerfilAnfitrion(@PathVariable Long id) throws Exception {
+        fotoPerfilService.eliminarFotoPerfil(id);
+        return ResponseEntity.noContent().build();
+    }
+
+
 
     // ---------------- Gestión de Alojamientos ----------------
 
