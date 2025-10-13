@@ -46,7 +46,7 @@ class UsuarioServiceImplUnitTest {
                 "Juan Pérez",
                 "juan@example.com",
                 "3001234567",
-                "Password123",              // ≥8 + mayúscula + número
+                "Password123",
                 LocalDate.of(1990, 1, 1),
                 Rol.USUARIO,
                 "perfil.jpg"
@@ -77,7 +77,7 @@ class UsuarioServiceImplUnitTest {
             u.setTelefono(dtoValido.getTelefono());
             u.setFechaNacimiento(dtoValido.getFechaNacimiento());
             u.setRol(dtoValido.getRol());
-            u.setContrasena(dtoValido.getContrasena()); // será reemplazada por la codificada
+            u.setContrasena(dtoValido.getContrasena());
             return u;
         });
         when(passwordEncoder.encode("Password123")).thenReturn("ENCODED");
@@ -244,7 +244,6 @@ class UsuarioServiceImplUnitTest {
         // El usuario actual en BD
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(entidadValida));
 
-        // Simula que el nuevo email ya pertenece a OTRO usuario
         Usuario otro = new Usuario();
         otro.setId(2L);
         otro.setEmail("exists@example.com");
@@ -260,7 +259,6 @@ class UsuarioServiceImplUnitTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("ya está en uso");
 
-        // No debe intentar persistir cambios
         verify(usuarioRepository, never()).save(any());
     }
 

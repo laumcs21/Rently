@@ -27,7 +27,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,10 +75,8 @@ class ComentarioServiceImplUnitTest {
         usuarioDTO.setRol(Rol.USUARIO);
         usuarioDTO.setActivo(true);
 
-        // ✅ Crear instancia manualmente
         comentarioService = new ComentarioServiceImpl(jwtService);
 
-        // ✅ Inyectar todos los mocks manualmente
         ReflectionTestUtils.setField(comentarioService, "comentarioDAO", comentarioDAO);
         ReflectionTestUtils.setField(comentarioService, "comentarioRepository", comentarioRepository);
         ReflectionTestUtils.setField(comentarioService, "anfitrionRepository", anfitrionRepository);
@@ -88,7 +85,6 @@ class ComentarioServiceImplUnitTest {
         ReflectionTestUtils.setField(comentarioService, "anfitrionDAO", anfitrionDAO);
         ReflectionTestUtils.setField(comentarioService, "alojamientoMapper", alojamientoMapper);
 
-        // ✅ Configuración común
         when(jwtService.extractUsername(anyString())).thenReturn("user@test.com");
         when(usuarioService.findUserByEmail("user@test.com")).thenReturn(Optional.of(usuarioDTO));
     }

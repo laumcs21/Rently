@@ -99,7 +99,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).crearAnfitrion(any());
     }
 
-    // Nuevo: teléfono con formato inválido
     @Test
     void create_InvalidPhone_ThrowsException() {
         anfitrionDTO.setTelefono("12AB");
@@ -110,7 +109,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).crearAnfitrion(any());
     }
 
-    // Nuevo: fecha de nacimiento futura
     @Test
     void create_FutureBirthDate_ThrowsException() {
         anfitrionDTO.setFechaNacimiento(LocalDate.now().plusDays(1));
@@ -121,7 +119,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).crearAnfitrion(any());
     }
 
-    // Nuevo: menor de edad (ej. < 18)
     @Test
     void create_Underage_ThrowsException() {
         anfitrionDTO.setFechaNacimiento(LocalDate.now().minusYears(17));
@@ -153,7 +150,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).buscarPorId(any());
     }
 
-    // Nuevo: ID válido pero no encontrado
     @Test
     void findById_NotFound_ReturnsEmpty() {
         when(anfitrionDAO.buscarPorId(2L)).thenReturn(Optional.empty());
@@ -186,7 +182,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).buscarPorEmail(any());
     }
 
-    // Nuevo: email válido pero no encontrado
     @Test
     void findByEmail_NotFound_ReturnsEmpty() {
         when(anfitrionDAO.buscarPorEmail("noexiste@example.com"))
@@ -220,7 +215,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).buscarPorNombre(any());
     }
 
-    // Nuevo: nombre válido pero sin resultados
     @Test
     void findByName_NoResults_ReturnsEmptyList() {
         when(anfitrionDAO.buscarPorNombre("SinResultados"))
@@ -237,9 +231,7 @@ class AnfitrionServiceImplUnitTest {
 
     @Test
     void update_ValidData_ReturnsDTO() {
-        // Pre-check de existencia
         when(anfitrionDAO.buscarPorId(1L)).thenReturn(Optional.of(existente()));
-        // Actualización
         when(anfitrionDAO.actualizarAnfitrion(eq(1L), any(AnfitrionDTO.class)))
                 .thenReturn(Optional.of(anfitrionDTO));
 
@@ -272,7 +264,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).actualizarAnfitrion(anyLong(), any());
     }
 
-    // Nuevo: DTO nulo en update
     @Test
     void update_NullDTO_ThrowsException() {
         assertThrows(IllegalArgumentException.class,
@@ -282,7 +273,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).actualizarAnfitrion(any(), any());
     }
 
-    // Nuevo: update con nombre en blanco
     @Test
     void update_NameEmpty_ThrowsException() {
         AnfitrionDTO dto = new AnfitrionDTO();
@@ -295,7 +285,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).actualizarAnfitrion(anyLong(), any());
     }
 
-    // Nuevo: update con teléfono inválido
     @Test
     void update_InvalidPhone_ThrowsException() {
         AnfitrionDTO dto = new AnfitrionDTO();
@@ -308,7 +297,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).actualizarAnfitrion(anyLong(), any());
     }
 
-    // Nuevo: fecha de nacimiento futura en update
     @Test
     void update_FutureBirthDate_ThrowsException() {
         AnfitrionDTO dto = new AnfitrionDTO();
@@ -321,7 +309,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).actualizarAnfitrion(anyLong(), any());
     }
 
-    // Nuevo: menor de edad en update
     @Test
     void update_Underage_ThrowsException() {
         AnfitrionDTO dto = new AnfitrionDTO();
@@ -334,7 +321,6 @@ class AnfitrionServiceImplUnitTest {
         verify(anfitrionDAO, never()).actualizarAnfitrion(anyLong(), any());
     }
 
-    // Cambiado: no encontrado -> lanza RuntimeException (pre-check)
     @Test
     void update_NotFound_ShouldThrowException() {
         when(anfitrionDAO.buscarPorId(1L)).thenReturn(Optional.empty());
@@ -371,7 +357,6 @@ class AnfitrionServiceImplUnitTest {
 
     @Test
     void delete_NonExistentId_ShouldThrowException() {
-        // Si tu service lanza RuntimeException cuando eliminar=false:
         when(anfitrionDAO.eliminarAnfitrion(99L)).thenReturn(false);
 
         RuntimeException ex = assertThrows(RuntimeException.class,

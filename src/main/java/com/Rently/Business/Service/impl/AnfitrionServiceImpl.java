@@ -26,7 +26,6 @@ public class AnfitrionServiceImpl implements AnfitrionService {
 
     private final AnfitrionDAO anfitrionDAO;
 
-    // Regex simple para validar emails
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
 
@@ -116,10 +115,8 @@ public class AnfitrionServiceImpl implements AnfitrionService {
             throw new IllegalArgumentException("El DTO no puede ser nulo");
         }
 
-        // 🔹 Primero validar todo (edad incluida)
         validateAnfitrionUpdateData(anfitrionDTO);
 
-        // 🔹 Si pasó validación (no es menor de edad), recién toca el DAO
         anfitrionDAO.buscarPorId(id)
                 .orElseThrow(() -> new IllegalArgumentException("Anfitrión con ID " + id + " no encontrado"));
 

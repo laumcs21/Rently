@@ -113,7 +113,7 @@ public class AlojamientoServiceImpl implements AlojamientoService {
     }
 
     private void validateUpdateData(AlojamientoDTO dto) {
-        if (dto == null) return; // nothing to update
+        if (dto == null) return;
         if (dto.getTitulo() != null && dto.getTitulo().trim().isEmpty())
             throw new IllegalArgumentException("titulo no puede estar vacío");
         if (dto.getPrecioPorNoche() != null && dto.getPrecioPorNoche() <= 0)

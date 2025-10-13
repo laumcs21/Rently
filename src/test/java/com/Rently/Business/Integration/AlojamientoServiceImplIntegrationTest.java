@@ -32,10 +32,8 @@ public class AlojamientoServiceImplIntegrationTest {
 
     @BeforeEach
     void setup() {
-        // 🔹 1. Limpiar la BD antes de cada test
         testDataFactory.clearAll();
 
-        // 🔹 2. Crear datos base
         anfitrion = testDataFactory.createAnfitrion("anfitrion@test.com");
         servicios = testDataFactory.createServiciosDefault();
         alojamiento = testDataFactory.createAlojamiento(anfitrion, servicios);

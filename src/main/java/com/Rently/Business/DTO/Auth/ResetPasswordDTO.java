@@ -14,6 +14,8 @@ public class ResetPasswordDTO {
     @NotBlank @Size(min = 8)
     private String newPassword;
 
+    public ResetPasswordDTO() {}
+
     public @NotBlank String getCode() {
         return code;
     }

@@ -70,7 +70,7 @@ public class TestDataFactory {
                         "Usuario Test",
                         uniqueEmail(email),
                         "3001234567",
-                        "Password123A", // ✅ contraseña fuerte
+                        "Password123A",
                         LocalDate.of(1995, 1, 15),
                         Rol.USUARIO,
                         "usuario.jpg"

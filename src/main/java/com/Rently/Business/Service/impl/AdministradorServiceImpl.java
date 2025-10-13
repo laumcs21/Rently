@@ -108,12 +108,10 @@ public class AdministradorServiceImpl implements AdministradorService {
             throw new IllegalArgumentException("El administrador no puede ser nulo");
         }
 
-        // Nombre obligatorio
         if (dto.getNombre() == null || dto.getNombre().trim().isEmpty()) {
             throw new IllegalArgumentException("El nombre es obligatorio");
         }
 
-        // Email válido
         if (dto.getEmail() == null || !dto.getEmail().matches(EMAIL_REGEX)) {
             throw new IllegalArgumentException("El email no es válido");
         }
@@ -147,7 +145,6 @@ public class AdministradorServiceImpl implements AdministradorService {
             throw new IllegalArgumentException("El administrador no puede ser nulo");
         }
 
-        // Validaciones opcionales (solo si los campos no son nulos)
         if (dto.getNombre() != null && dto.getNombre().trim().isEmpty()) {
             throw new IllegalArgumentException("El nombre no puede estar vacío");
         }

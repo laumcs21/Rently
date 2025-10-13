@@ -51,7 +51,7 @@ class ServicioServiceImplUnitTest {
     @Test
     @DisplayName("CREATE - Nombre inválido debe lanzar excepción")
     void create_InvalidName_ShouldThrow() {
-        validServicio.setNombre("  "); // inválido
+        validServicio.setNombre("  ");
         assertThatThrownBy(() -> servicioService.create(validServicio))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("nombre es obligatorio");

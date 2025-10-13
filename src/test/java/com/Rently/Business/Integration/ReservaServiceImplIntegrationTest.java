@@ -52,18 +52,15 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setup() {
-        // Limpiar datos previos
         factory.clearAll();
         securityHelper.clearAuthentication();
 
-        // Crear datos base
         usuario = factory.createUsuario("usuario@test.com");
         otroUsuario = factory.createUsuario("otro@test.com");
         anfitrion = factory.createAnfitrion("anfitrion@test.com");
         admin = factory.createAdmin("admin@test.com");
         alojamiento = factory.createAlojamiento(anfitrion, factory.createServiciosDefault());
 
-        // Por defecto, autenticar como usuario normal
         securityHelper.authenticateUser(usuario);
     }
 
@@ -141,7 +138,6 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
     @Order(6)
     @DisplayName("Error al crear reserva: usuario inactivo")
     void crearReserva_usuarioInactivo_error() {
-        // Buscar el usuario en BD y desactivarlo
         Usuario usuarioEntity = usuarioRepository.findById(usuario.getId()).orElseThrow();
         usuarioEntity.setActivo(false);
         usuarioRepository.save(usuarioEntity);
@@ -153,7 +149,6 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
 
         System.out.println("🔍 Mensaje de error real: " + ex.getMessage());
 
-        // Aceptar cualquiera de los dos mensajes posibles
         String mensaje = ex.getMessage().toLowerCase();
         assertTrue(mensaje.contains("activo") || mensaje.contains("no existe"),
                 "Esperaba un error de usuario inactivo o inexistente, pero recibió: " + ex.getMessage());
@@ -170,7 +165,6 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> reservaService.create(reserva));
 
-        // Aceptar "no existe" o "no está disponible"
         String mensaje = ex.getMessage().toLowerCase();
         assertTrue(mensaje.contains("no existe") || mensaje.contains("no está disponible"),
                 "Esperaba error de alojamiento no disponible, pero recibió: " + ex.getMessage());
@@ -180,11 +174,9 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
     @Order(8)
     @DisplayName("Error al crear reserva: solapamiento de fechas")
     void crearReserva_solapamientoFechas_error() {
-        // Crear primera reserva
         ReservaDTO r1 = factory.createReserva(usuario, alojamiento);
         reservaService.create(r1);
 
-        // Intentar crear segunda reserva que se solapa
         ReservaDTO r2 = new ReservaDTO(
                 null,
                 r1.getFechaInicio().plusDays(1),
@@ -203,12 +195,10 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
     @Order(9)
     @DisplayName("Crear reserva: sin solapamiento si otra está cancelada")
     void crearReserva_sinSolapamiento_siOtraCancelada() {
-        // Crear y cancelar primera reserva
         ReservaDTO r1 = factory.createReserva(usuario, alojamiento);
         ReservaDTO creada1 = reservaService.create(r1);
         reservaService.updateState(creada1.getId(), EstadoReserva.CANCELADA);
 
-        // Crear segunda reserva en mismas fechas (debe permitirse)
         ReservaDTO r2 = new ReservaDTO(
                 null,
                 r1.getFechaInicio(),
@@ -226,8 +216,6 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
     @Order(10)
     @DisplayName("Error al crear reserva: usuario intenta crear para otro usuario")
     void crearReserva_usuarioNoPuedeCrearParaOtro_error() {
-        // Usuario actual autenticado es 'usuario'
-        // Intenta crear reserva para 'otroUsuario'
         ReservaDTO reserva = factory.createReserva(otroUsuario, alojamiento);
 
         RuntimeException ex = assertThrows(RuntimeException.class,
@@ -239,16 +227,9 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
     @Order(11)
     @DisplayName("Admin puede crear reserva para cualquier usuario")
     void crearReserva_adminPuedeCrearParaOtro() {
-        // 1️⃣ Autenticar al admin en el SecurityContext
         securityHelper.authenticateUser(admin);
-
-        // 2️⃣ Crear un DTO de reserva para otro usuario
         ReservaDTO reserva = factory.createReserva(usuario, alojamiento);
-
-        // 3️⃣ Crear la reserva y verificar que no lance excepción
         ReservaDTO creada = assertDoesNotThrow(() -> reservaService.create(reserva));
-
-        // 4️⃣ Validar que la reserva se haya creado correctamente
         assertNotNull(creada.getId());
         assertEquals(usuario.getId(), creada.getUsuarioId());
     }
@@ -285,11 +266,9 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
     @Order(13)
     @DisplayName("Error al actualizar: usuario no es propietario")
     void actualizarReserva_usuarioNoPropietario_error() {
-        // Crear reserva como usuario
         ReservaDTO reserva = factory.createReserva(usuario, alojamiento);
         ReservaDTO creada = reservaService.create(reserva);
 
-        // Cambiar autenticación a otroUsuario
         securityHelper.authenticateUser(otroUsuario);
 
         ReservaDTO cambios = new ReservaDTO(
@@ -310,15 +289,12 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
     @Order(14)
     @DisplayName("Error al actualizar: reserva confirmada")
     void actualizarReserva_estadoConfirmada_error() {
-        // 1️⃣ Crear reserva como usuario
         ReservaDTO reserva = factory.createReserva(usuario, alojamiento);
         ReservaDTO creada = reservaService.create(reserva);
 
-        // 2️⃣ Confirmar reserva como anfitrión del alojamiento
         securityHelper.authenticateUser(anfitrion);
         reservaService.updateState(creada.getId(), EstadoReserva.CONFIRMADA);
 
-        // 3️⃣ Volver a autenticarse como usuario e intentar actualizar
         securityHelper.authenticateUser(usuario);
         ReservaDTO cambios = new ReservaDTO(
                 creada.getId(),
@@ -329,7 +305,6 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
                 alojamiento.getId()
         );
 
-        // 4️⃣ Verificar que no se puede modificar una reserva confirmada
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> reservaService.update(creada.getId(), cambios));
         assertTrue(ex.getMessage().contains("No se puede modificar una reserva confirmada"));
@@ -343,11 +318,9 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
         ReservaDTO reserva = factory.createReserva(usuario, alojamiento);
         ReservaDTO creada = reservaService.create(reserva);
 
-        // Rechazar como admin
         securityHelper.authenticateUser(admin);
         reservaService.updateState(creada.getId(), EstadoReserva.RECHAZADA);
 
-        // Volver a usuario e intentar actualizar
         securityHelper.authenticateUser(usuario);
         ReservaDTO cambios = new ReservaDTO(
                 creada.getId(),
@@ -367,11 +340,8 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
     @Order(16)
     @DisplayName("Admin puede actualizar cualquier reserva")
     void actualizarReserva_adminPuedeActualizarCualquiera() {
-        // Crear reserva como usuario
         ReservaDTO reserva = factory.createReserva(usuario, alojamiento);
         ReservaDTO creada = reservaService.create(reserva);
-
-        // Actualizar como admin
         securityHelper.authenticateUser(admin);
         ReservaDTO cambios = new ReservaDTO(
                 creada.getId(),
@@ -397,7 +367,6 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
         ReservaDTO reserva = factory.createReserva(usuario, alojamiento);
         ReservaDTO creada = reservaService.create(reserva);
 
-        // Cambiar a admin
         securityHelper.authenticateUser(admin);
         boolean updated = reservaService.updateState(creada.getId(), EstadoReserva.CONFIRMADA);
 
@@ -428,7 +397,6 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
         ReservaDTO reserva = factory.createReserva(usuario, alojamiento);
         ReservaDTO creada = reservaService.create(reserva);
 
-        // Cambiar a otro usuario
         securityHelper.authenticateUser(otroUsuario);
 
         RuntimeException ex = assertThrows(RuntimeException.class,
@@ -524,7 +492,6 @@ class ReservaServiceImplIntegrationTest extends BaseIntegrationTest {
         ReservaDTO r1 = factory.createReserva(usuario, alojamiento);
         ReservaDTO r2 = factory.createReserva(usuario, alojamiento);
 
-        // Crear con fechas diferentes para evitar solapamiento
         r2.setFechaInicio(LocalDate.now().plusDays(10));
         r2.setFechaFin(LocalDate.now().plusDays(12));
 

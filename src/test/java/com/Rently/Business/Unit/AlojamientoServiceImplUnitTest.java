@@ -48,7 +48,6 @@ class AlojamientoServiceImplUnitTest {
         validAlojamiento.setAnfitrionId(validHostId);
     }
 
-    // Helper: entidad existente para el pre-check
     private AlojamientoDTO alojExistente() {
         AlojamientoDTO dto = new AlojamientoDTO();
         dto.setId(validId);
@@ -61,7 +60,7 @@ class AlojamientoServiceImplUnitTest {
         return dto;
     }
 
-    // CREATE - happy path
+    // CREATE
     @Test
     @DisplayName("CREATE - Alojamiento válido debe retornar alojamiento creado")
     void createAlojamiento_ValidData_ShouldReturnCreated() {
@@ -189,9 +188,7 @@ class AlojamientoServiceImplUnitTest {
     @Test
     @DisplayName("DELETE - id válido debe eliminar (con pre-check)")
     void deleteAlojamiento_ValidId_ShouldDelete() {
-        // PRE-CHECK de existencia
         when(alojamientoDAO.buscarPorId(validId)).thenReturn(Optional.of(alojExistente()));
-        // Eliminación
         when(alojamientoDAO.eliminar(validId)).thenReturn(true);
 
         boolean res = alojamientoService.delete(validId);

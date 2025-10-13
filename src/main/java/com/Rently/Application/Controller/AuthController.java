@@ -1,6 +1,5 @@
 package com.Rently.Application.Controller;
 
-import ch.qos.logback.classic.Logger;
 import com.Rently.Business.DTO.Auth.ForgotPasswordRequestDTO;
 import com.Rently.Business.DTO.Auth.ResetPasswordDTO;
 import com.Rently.Business.Service.EmailService;
@@ -14,6 +13,8 @@ import com.Rently.Business.DTO.UsuarioDTO;
 import com.Rently.Business.DTO.Auth.AuthRequest;
 import com.Rently.Business.DTO.Auth.AuthResponse;
 import com.Rently.Business.Service.AuthService;
+
+import java.util.Map;
 
 
 @RestController
@@ -51,17 +52,14 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-
     @PostMapping("/password/reset")
-    public ResponseEntity<?> reset(@Valid @RequestBody ResetPasswordDTO dto) {
-        passwordResetService.resetPassword(dto.getEmail(), dto.getCode(), dto.getNewPassword());
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordDTO dto) {
+        passwordResetService.resetPassword(
+                dto.getEmail().trim(),
+                dto.getCode().trim(),
+                dto.getNewPassword()
+        );
+        return ResponseEntity.ok().body(Map.of("message", "Contraseña actualizada"));
     }
-
-        @GetMapping("/__debug/mail-test")
-        public ResponseEntity<?> test(@RequestParam String to) {
-            mailService.send(to, "123456");
-            return ResponseEntity.ok("ok");
-        }
 
 }

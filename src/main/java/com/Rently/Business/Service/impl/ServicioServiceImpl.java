@@ -18,7 +18,6 @@ public class ServicioServiceImpl implements ServicioService {
     public ServicioDTO create(ServicioDTO servicioDTO) {
         validateServicio(servicioDTO);
 
-        // Verificar duplicados por nombre
         List<ServicioDTO> existentes = servicioDAO.obtenerServicios();
         boolean existe = existentes.stream()
                 .anyMatch(s -> s.getNombre().equalsIgnoreCase(servicioDTO.getNombre()));
@@ -49,7 +48,6 @@ public class ServicioServiceImpl implements ServicioService {
         }
         validateServicio(servicioDTO);
 
-        // Validar duplicados en update (excepto el mismo servicio)
         List<ServicioDTO> existentes = servicioDAO.obtenerServicios();
         boolean existe = existentes.stream()
                 .anyMatch(s -> !s.getId().equals(id) &&
@@ -67,7 +65,6 @@ public class ServicioServiceImpl implements ServicioService {
             throw new IllegalArgumentException("ID inválido");
         }
 
-        // 🚨 Regla: evitar borrar si está asociado a alojamientos
         boolean enUso = servicioDAO.estaAsociadoAAlgunAlojamiento(id);
         if (enUso) {
             throw new IllegalStateException("No se puede eliminar el servicio, está asociado a alojamientos");

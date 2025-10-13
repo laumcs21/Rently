@@ -36,10 +36,7 @@ class ServicioServiceImplIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // 🔹 limpiar la BD antes de cada test
         testDataFactory.clearAll();
-
-        // 🔹 crear un servicio base
         servicioBase = servicioService.create(
                 new ServicioDTO(null, "WiFi", "Internet de alta velocidad")
         );
@@ -128,7 +125,6 @@ class ServicioServiceImplIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("DELETE - Servicio asociado a alojamiento debe lanzar excepción")
     void delete_Associated_ShouldThrowException() {
-        // 🔹 crear anfitrión y alojamiento asociado al servicio
         AnfitrionDTO anfitrion = testDataFactory.createAnfitrion("anfitrion@test.com");
         AlojamientoDTO alojamiento = testDataFactory.createAlojamiento(anfitrion, List.of(servicioBase));
 

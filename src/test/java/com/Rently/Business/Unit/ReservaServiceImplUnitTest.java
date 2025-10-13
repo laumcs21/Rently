@@ -72,7 +72,6 @@ class ReservaServiceImplUnitTest {
     void setUp() {
         validId = 1L;
 
-        // Setup UsuarioDTO
         usuarioDTO = new UsuarioDTO();
         usuarioDTO.setId(validId);
         usuarioDTO.setEmail("test@test.com");
@@ -80,19 +79,16 @@ class ReservaServiceImplUnitTest {
         usuarioDTO.setRol(Rol.USUARIO);
         usuarioDTO.setActivo(true);
 
-        // Setup Usuario Entity
         usuarioEntity = new Usuario();
         usuarioEntity.setId(validId);
         usuarioEntity.setEmail("test@test.com");
         usuarioEntity.setRol(Rol.USUARIO);
 
-        // Setup AlojamientoDTO
         alojamientoDTO = new AlojamientoDTO();
         alojamientoDTO.setId(2L);
         alojamientoDTO.setTitulo("Casa Test");
         alojamientoDTO.setEliminado(false);
 
-        // Setup ReservaDTO válida
         validReserva = new ReservaDTO();
         validReserva.setId(null);
         validReserva.setFechaInicio(LocalDate.now().plusDays(1));
@@ -102,7 +98,6 @@ class ReservaServiceImplUnitTest {
         validReserva.setAlojamientoId(2L);
         validReserva.setEstado(EstadoReserva.PENDIENTE);
 
-        // Mock Security Context
         mockSecurityContext("test@test.com", Rol.USUARIO);
     }
 
@@ -129,7 +124,6 @@ class ReservaServiceImplUnitTest {
     @Test
     @DisplayName("CREATE - Reserva válida debe retornar reserva creada")
     void createReserva_ValidData_ShouldReturnCreated() {
-        // Arrange
         when(usuarioDAO.buscarPorId(validId)).thenReturn(Optional.of(usuarioDTO));
         when(alojamientoDAO.buscarPorId(2L)).thenReturn(Optional.of(alojamientoDTO));
         when(usuarioDAO.buscarPorEmail("test@test.com")).thenReturn(Optional.of(usuarioDTO));
@@ -141,10 +135,8 @@ class ReservaServiceImplUnitTest {
         expected.setEstado(EstadoReserva.PENDIENTE);
         when(reservaDAO.crear(any(ReservaDTO.class))).thenReturn(expected);
 
-        // Act
         ReservaDTO result = reservaService.create(validReserva);
 
-        // Assert
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(10L);
         assertThat(result.getEstado()).isEqualTo(EstadoReserva.PENDIENTE);
@@ -250,9 +242,8 @@ class ReservaServiceImplUnitTest {
     @Test
     @DisplayName("CREATE - Usuario no puede crear para otro usuario")
     void createReserva_DifferentUser_ShouldThrow() {
-        validReserva.setUsuarioId(999L); // Diferente al usuario autenticado
+        validReserva.setUsuarioId(999L);
 
-        // Mock para que el usuario 999 exista
         UsuarioDTO otroUsuario = new UsuarioDTO();
         otroUsuario.setId(999L);
         otroUsuario.setActivo(true);
@@ -448,7 +439,6 @@ class ReservaServiceImplUnitTest {
     @Test
     @DisplayName("DELETE - ID inválido debe lanzar excepción")
     void deleteReserva_InvalidId_ShouldThrow() {
-        // Mock del usuario autenticado
         when(usuarioDAO.buscarPorEmail("test@test.com")).thenReturn(Optional.of(usuarioDTO));
         when(personaMapper.dtoToUsuario(usuarioDTO)).thenReturn(usuarioEntity);
 

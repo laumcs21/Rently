@@ -33,10 +33,8 @@ class UsuarioServiceImplIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // Limpia la tabla antes de cada test
         testDataFactory.clearAll();
 
-        // Crea un usuario válido de base
         usuarioBase = testDataFactory.createUsuario("juan@example.com");
     }
 
@@ -79,7 +77,7 @@ class UsuarioServiceImplIntegrationTest extends BaseIntegrationTest {
     void create_InvalidEmail_ShouldThrowException() {
         UsuarioDTO invalido = new UsuarioDTO();
         invalido.setNombre("Usuario Inválido");
-        invalido.setEmail("correo-invalido"); // email inválido
+        invalido.setEmail("correo-invalido");
         invalido.setTelefono("3001234567");
         invalido.setContrasena("Password123A");
         invalido.setFechaNacimiento(LocalDate.of(1990, 1, 1));

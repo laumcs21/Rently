@@ -36,22 +36,15 @@ public class UsuarioServiceImpl implements UsuarioService {
     public UsuarioDTO registerUser(UsuarioDTO usuarioDTO) {
         log.info("Registrando usuario con email {}", usuarioDTO.getEmail());
 
-        // Validaciones de datos de negocio
         validateUserData(usuarioDTO);
 
-        // Verificar si el email ya existe
         if (usuarioRepository.findByEmail(usuarioDTO.getEmail()).isPresent()) {
             log.warn("Intento de registro con email duplicado: {}", usuarioDTO.getEmail());
             throw new IllegalStateException("El email " + usuarioDTO.getEmail() + " ya está en uso.");
         }
 
-        // Mapeo DTO → Entidad
         Usuario usuario = personaMapper.dtoToUsuario(usuarioDTO);
-
-        // Encriptar contraseña antes de guardar
         usuario.setContrasena(passwordEncoder.encode(usuarioDTO.getContrasena()));
-
-        // Guardar en BD
         Usuario savedUsuario = usuarioRepository.save(usuario);
 
         log.info("Usuario registrado con éxito. ID: {}", savedUsuario.getId());
@@ -90,11 +83,8 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         String emailActual = usuario.getEmail();
-
-        // Aplica cambios (el mapper puede tocar email, pero validamos con el DTO 'cambios')
         personaMapper.updateUsuarioFromDTO(usuario, cambios);
 
-        // VALIDACIÓN DE UNICIDAD DE EMAIL (sólo si viene y es distinto al actual)
         if (cambios.getEmail() != null && !cambios.getEmail().isBlank()) {
             String nuevoEmail = cambios.getEmail().trim();
 
@@ -105,8 +95,6 @@ public class UsuarioServiceImpl implements UsuarioService {
                             throw new IllegalStateException("El email ya está en uso");
                         });
 
-                // Si quieres normalizar (opcional):
-                // nuevoEmail = nuevoEmail.toLowerCase(Locale.ROOT);
 
                 usuario.setEmail(nuevoEmail);
             }

@@ -13,7 +13,6 @@ public class TestJwtConfig {
     public JwtService jwtService() {
         JwtService jwtService = Mockito.mock(JwtService.class);
 
-        // Simula que extrae el email del SecurityContext en lugar de decodificar el token
         Mockito.when(jwtService.extractUsername(Mockito.anyString()))
                 .thenAnswer(invocation -> {
                     if (SecurityContextHolder.getContext().getAuthentication() != null) {

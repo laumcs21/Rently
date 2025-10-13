@@ -8,7 +8,6 @@ import com.Rently.Persistence.Repository.PasswordResetTokenRepository;
 import com.Rently.Persistence.Repository.PersonaRepository;
 import com.Rently.Persistence.Entity.PasswordResetToken;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,11 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Optional;
 
  @Service
     @RequiredArgsConstructor
-    @Slf4j
     public class PasswordResetServiceImpl implements PasswordResetService {
 
         private final PersonaRepository personaRepository;
@@ -35,8 +32,10 @@ import java.util.Optional;
      private static final Logger log = LoggerFactory.getLogger(PasswordResetServiceImpl.class);
 
      @Override
+     @Transactional
      public void requestCode(String email) {
          personaRepository.findByEmail(email).ifPresentOrElse(persona -> {
+             tokenRepository.deleteByPersonaAndUsedFalse(persona);
              String code = codeGenerator.generate6Digits();
              saveCode(persona, code);
              log.info("[RESET] Token creado para {}: {}", email, code);
@@ -46,6 +45,9 @@ import java.util.Optional;
              log.info("[RESET] Email no registrado: {} (respondemos 200 para no filtrar información)", email);
          });
      }
+
+     @Override
+     @Transactional
      public void resetPassword(String email, String code, String newPassword) {
          Persona persona = personaRepository.findByEmail(email)
                  .orElseThrow(() -> new IllegalArgumentException("Código inválido"));
@@ -61,7 +63,7 @@ import java.util.Optional;
      }
 
      private void saveCode(Persona persona, String code) {
-         tokenRepository.deleteByPersonaId(persona.getId());
+         tokenRepository.deleteByPersonaAndUsedFalse(persona);
 
          PasswordResetToken token = PasswordResetToken.builder()
                  .persona(persona)
@@ -71,7 +73,7 @@ import java.util.Optional;
                  .used(false)
                  .build();
 
-         tokenRepository.save(token);
+         tokenRepository.saveAndFlush(token);
      }
 
  }

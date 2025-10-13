@@ -29,10 +29,8 @@ class AnfitrionServiceImplIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // Limpiar tabla antes de cada test
         anfitrionRepository.deleteAll();
 
-        // Crear anfitrión base
         anfitrionBase = new AnfitrionDTO();
         anfitrionBase.setNombre("Anfitrion Test");
         anfitrionBase.setEmail("anfitrion@example.com");
