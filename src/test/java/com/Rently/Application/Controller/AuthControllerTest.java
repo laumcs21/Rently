@@ -5,6 +5,8 @@ import com.Rently.Business.DTO.Auth.AuthRequest;
 import com.Rently.Business.DTO.Auth.AuthResponse;
 import com.Rently.Business.DTO.UsuarioDTO;
 import com.Rently.Business.Service.AuthService;
+import com.Rently.Business.Service.EmailService;
+import com.Rently.Business.Service.PasswordResetService;
 import com.Rently.Persistence.Entity.Rol;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,12 @@ class AuthControllerTest {
 
     @MockBean
     private AuthService authService;
+
+    @MockBean
+    private EmailService emailService;
+
+    @MockBean
+    private PasswordResetService passwordResetService;
 
     @Test
     void registerShouldReturnToken() throws Exception {

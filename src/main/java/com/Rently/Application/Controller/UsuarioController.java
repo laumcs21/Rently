@@ -61,18 +61,20 @@ public class UsuarioController {
     private final ReservaService reservaService;
     private final ComentarioService comentarioService;
     private final AlojamientoService alojamientoService;
-    private FotoPerfilService fotoPerfilService;
+    private final FotoPerfilService fotoPerfilService;
 
     public UsuarioController(UsuarioService usuarioService,
                              AuthService authService,
                              ReservaService reservaService,
                              ComentarioService comentarioService,
-                             AlojamientoService alojamientoService) {
+                             AlojamientoService alojamientoService,
+                             FotoPerfilService fotoPerfilService) {
         this.usuarioService = usuarioService;
         this.authService = authService;
         this.reservaService = reservaService;
         this.comentarioService = comentarioService;
         this.alojamientoService = alojamientoService;
+        this.fotoPerfilService = fotoPerfilService;
     }
 
     // ---------------- CRUD de Usuarios ----------------

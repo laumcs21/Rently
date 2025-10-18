@@ -9,6 +9,7 @@ import com.Rently.Business.Service.AnfitrionService;
 import com.Rently.Business.Service.AlojamientoService;
 import com.Rently.Business.Service.ComentarioService;
 import com.Rently.Business.Service.ReservaService;
+import com.Rently.Business.Service.FotoPerfilService;
 import com.Rently.Persistence.Entity.EstadoReserva;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,9 @@ class AnfitrionControllerTest {
 
     @MockBean
     private ReservaService reservaService;
+
+    @MockBean
+    private FotoPerfilService fotoPerfilService;
 
     @Test
     void listarReservasShouldReturnOk() throws Exception {

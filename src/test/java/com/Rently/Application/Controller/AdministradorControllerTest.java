@@ -7,6 +7,7 @@ import com.Rently.Business.DTO.UsuarioDTO;
 import com.Rently.Business.Service.AdministradorService;
 import com.Rently.Business.Service.AlojamientoService;
 import com.Rently.Business.Service.UsuarioService;
+import com.Rently.Business.Service.FotoPerfilService;
 import com.Rently.Persistence.Entity.Rol;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,9 @@ class AdministradorControllerTest {
 
     @MockBean
     private AlojamientoService alojamientoService;
+
+    @MockBean
+    private FotoPerfilService fotoPerfilService;
 
     @Test
     void homeShouldReturnHealthMessage() throws Exception {

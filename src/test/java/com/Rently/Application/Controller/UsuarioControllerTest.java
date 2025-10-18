@@ -10,6 +10,7 @@ import com.Rently.Business.Service.AuthService;
 import com.Rently.Business.Service.ComentarioService;
 import com.Rently.Business.Service.ReservaService;
 import com.Rently.Business.Service.UsuarioService;
+import com.Rently.Business.Service.FotoPerfilService;
 import com.Rently.Persistence.Entity.EstadoReserva;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,9 @@ class UsuarioControllerTest {
 
     @MockBean
     private AlojamientoService alojamientoService;
+
+    @MockBean
+    private FotoPerfilService fotoPerfilService;
     @Test
     void crearUsuarioShouldReturnCreated() throws Exception {
         UsuarioDTO request = new UsuarioDTO();

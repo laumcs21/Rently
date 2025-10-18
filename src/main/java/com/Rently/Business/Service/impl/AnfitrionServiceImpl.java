@@ -5,6 +5,7 @@ import com.Rently.Business.Service.AnfitrionService;
 import com.Rently.Persistence.DAO.AnfitrionDAO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ import java.util.regex.Pattern;
 public class AnfitrionServiceImpl implements AnfitrionService {
 
     private final AnfitrionDAO anfitrionDAO;
+    private final PasswordEncoder passwordEncoder;
 
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
@@ -43,6 +45,10 @@ public class AnfitrionServiceImpl implements AnfitrionService {
         validateAnfitrionData(anfitrionDTO);
         validateAge(anfitrionDTO);
 
+        if (anfitrionDTO.getContrasena() == null || anfitrionDTO.getContrasena().trim().isEmpty()) {
+            throw new IllegalArgumentException("La contrase\u00f1a es obligatoria");
+        }
+        anfitrionDTO.setContrasena(passwordEncoder.encode(anfitrionDTO.getContrasena()));
         return anfitrionDAO.crearAnfitrion(anfitrionDTO);
     }
 

@@ -52,14 +52,16 @@ public class AdministradorController {
     private final AdministradorService administradorService;
     private final UsuarioService usuarioService;
     private final AlojamientoService alojamientoService;
-    private  FotoPerfilService fotoPerfilService;
+    private final FotoPerfilService fotoPerfilService;
 
     public AdministradorController(AdministradorService administradorService,
                                    UsuarioService usuarioService,
-                                   AlojamientoService alojamientoService) {
+                                   AlojamientoService alojamientoService,
+                                   FotoPerfilService fotoPerfilService) {
         this.administradorService = administradorService;
         this.usuarioService = usuarioService;
         this.alojamientoService = alojamientoService;
+        this.fotoPerfilService = fotoPerfilService;
     }
 
     // ---------------- CRUD de Administradores ----------------

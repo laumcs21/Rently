@@ -56,16 +56,18 @@ public class AnfitrionController {
     private final AlojamientoService alojamientoService;
     private final ComentarioService comentarioService;
     private final ReservaService reservaService;
-    private FotoPerfilService fotoPerfilService;
+    private final FotoPerfilService fotoPerfilService;
 
     public AnfitrionController(AnfitrionService anfitrionService,
                                AlojamientoService alojamientoService,
                                ComentarioService comentarioService,
-                               ReservaService reservaService) {
+                               ReservaService reservaService,
+                               FotoPerfilService fotoPerfilService) {
         this.anfitrionService = anfitrionService;
         this.alojamientoService = alojamientoService;
         this.comentarioService = comentarioService;
         this.reservaService = reservaService;
+        this.fotoPerfilService = fotoPerfilService;
     }
 
     // ---------------- CRUD de Anfitriones ----------------
