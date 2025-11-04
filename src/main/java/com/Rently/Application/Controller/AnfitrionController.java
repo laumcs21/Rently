@@ -45,24 +45,28 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.Rently.Business.DTO.AlojamientoImagenDTO;
+import com.Rently.Business.Service.AlojamientoImagenService;
+
 
 @RestController
 @RequestMapping("/api/anfitriones")
 @Tag(name = "Anfitriones", description = "Operaciones relacionadas con la gestión de anfitriones y sus alojamientos")
 public class AnfitrionController {
 
-
+    private final AlojamientoImagenService alojamientoImagenService;
     private final AnfitrionService anfitrionService;
     private final AlojamientoService alojamientoService;
     private final ComentarioService comentarioService;
     private final ReservaService reservaService;
     private final FotoPerfilService fotoPerfilService;
 
-    public AnfitrionController(AnfitrionService anfitrionService,
+    public AnfitrionController(AlojamientoImagenService alojamientoImagenService, AnfitrionService anfitrionService,
                                AlojamientoService alojamientoService,
                                ComentarioService comentarioService,
                                ReservaService reservaService,
                                FotoPerfilService fotoPerfilService) {
+        this.alojamientoImagenService = alojamientoImagenService;
         this.anfitrionService = anfitrionService;
         this.alojamientoService = alojamientoService;
         this.comentarioService = comentarioService;
@@ -313,6 +317,40 @@ public class AnfitrionController {
         return ResponseEntity.ok(null);
     }
 
+    // Listar imágenes del alojamiento de este anfitrión
+    @GetMapping("/{anfitrionId}/alojamientos/{alojamientoId}/imagenes")
+    public List<AlojamientoImagenDTO> listarImagenes(
+            @PathVariable Long anfitrionId,
+            @PathVariable Long alojamientoId
+    ) {
+        return alojamientoImagenService.listar(anfitrionId, alojamientoId);
+    }
+
+    // Subir imagen (multipart/form-data)
+    @PostMapping(
+            value = "/{anfitrionId}/alojamientos/{alojamientoId}/imagenes",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<AlojamientoImagenDTO> subirImagen(
+            @PathVariable Long anfitrionId,
+            @PathVariable Long alojamientoId,
+            @RequestPart("file") MultipartFile file,
+            @RequestParam(value = "orden", required = false) Integer orden
+    ) throws Exception {
+        var dto = alojamientoImagenService.subir(anfitrionId, alojamientoId, file, orden);
+        return ResponseEntity.ok(dto);
+    }
+
+    // Borrar imagen
+    @DeleteMapping("/{anfitrionId}/alojamientos/{alojamientoId}/imagenes/{imagenId}")
+    public ResponseEntity<Void> borrarImagen(
+            @PathVariable Long anfitrionId,
+            @PathVariable Long alojamientoId,
+            @PathVariable Long imagenId
+    ) throws Exception {
+        alojamientoImagenService.borrar(anfitrionId, alojamientoId, imagenId);
+        return ResponseEntity.noContent().build();
+    }
     // ---------------- Gestión de Reservas ----------------
 
     
