@@ -74,7 +74,7 @@ public class AnfitrionController {
         this.fotoPerfilService = fotoPerfilService;
     }
 
-    // ---------------- CRUD de Anfitriones ----------------
+    // ---------------- CRUD de Anfitriones ---------------
 
     @PostMapping
     @Operation(summary = "Crear anfitrión", description = "Registra un nuevo anfitrión en la plataforma")
