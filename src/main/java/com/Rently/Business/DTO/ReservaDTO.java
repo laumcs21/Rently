@@ -12,6 +12,8 @@ public class ReservaDTO {
     private EstadoReserva estado;
     private Long usuarioId;
     private Long alojamientoId;
+    private String alojamientoTitulo;
+
 
     public ReservaDTO() { }
 
@@ -46,6 +48,14 @@ public class ReservaDTO {
 
     public Long getAlojamientoId() { return alojamientoId; }
     public void setAlojamientoId(Long alojamientoId) { this.alojamientoId = alojamientoId; }
+
+    public String getAlojamientoTitulo() {
+        return alojamientoTitulo;
+    }
+
+    public void setAlojamientoTitulo(String alojamientoTitulo) {
+        this.alojamientoTitulo = alojamientoTitulo;
+    }
 
     @Override
     public String toString() {

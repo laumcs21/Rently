@@ -59,7 +59,7 @@ public class Servicio {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
-    // 🔹 Métodos de utilidad
+
     @Override
     public String toString() {
         return "Servicio{" +

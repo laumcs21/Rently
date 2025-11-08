@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
+import com.Rently.Business.DTO.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -25,12 +26,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import com.Rently.Business.DTO.AlojamientoDTO;
-import com.Rently.Business.DTO.ComentarioDTO;
-import com.Rently.Business.DTO.ReservaDTO;
 import com.Rently.Business.DTO.Auth.AuthRequest;
 import com.Rently.Business.DTO.Auth.AuthResponse;
-import com.Rently.Business.DTO.UsuarioDTO;
 import com.Rently.Business.Service.AlojamientoService;
 import com.Rently.Business.Service.AuthService;
 import com.Rently.Business.Service.ComentarioService;
@@ -99,6 +96,23 @@ public class UsuarioController {
                     .body(Map.of("error", "Solicitud incorrecta: datos incompletos"));
         }
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(@RequestHeader("Authorization") String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(Map.of("error", "Token no proporcionado"));
+            }
+
+            String token = authHeader.substring(7);
+            PersonaDTO user = authService.verifyToken(token); // Usa tu AuthService existente
+            return ResponseEntity.ok(user);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
+        }
+    }
+
 
     @GetMapping("/{id}")
     @Operation(summary = "Obtener usuario por ID", description = "Obtiene la información de un usuario específico")

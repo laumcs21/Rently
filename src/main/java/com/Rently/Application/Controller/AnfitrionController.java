@@ -319,27 +319,32 @@ public class AnfitrionController {
     @Operation(summary = "Listar reservas", description = "Obtiene todas las reservas realizadas en los alojamientos de un anfitrión con filtros")
     @ApiResponse(responseCode = "200", description = "Lista de reservas obtenida exitosamente")
     public ResponseEntity<?> listarReservas(
-            @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id,
-            @Parameter(description = "Estado de la reserva") @RequestParam(required = false) String estado,
-            @Parameter(description = "Fecha de inicio del filtro") @RequestParam(required = false) LocalDate fechaInicio,
-            @Parameter(description = "Fecha de fin del filtro") @RequestParam(required = false) LocalDate fechaFin,
-            @Parameter(description = "ID del alojamiento") @RequestParam(required = false) Long alojamientoId,
-            @Parameter(description = "Número de página", example = "0") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Tamaño de página", example = "10") @RequestParam(defaultValue = "10") int size,
-            @Parameter(description = "Ordenar por", example = "fechaCreacion") @RequestParam(defaultValue = "fechaCreacion") String sortBy,
-            @Parameter(description = "Dirección de orden", example = "desc") @RequestParam(defaultValue = "desc") String sortDir) {
+            @PathVariable Long id,
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) LocalDate fechaInicio,
+            @RequestParam(required = false) LocalDate fechaFin,
+            @RequestParam(required = false) Long alojamientoId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "fechaCreacion") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
         if (page < 0 || size <= 0) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "Parámetros de paginación inválidos."));
         }
 
+        // 1. validar anfitrión
         Optional<AnfitrionDTO> anfitrionOpt = anfitrionService.findById(id);
         if (anfitrionOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Anfitrión no encontrado"));
         }
 
+        // 2. traer alojamientos del anfitrión
         List<AlojamientoDTO> alojamientos = alojamientoService.findByHost(id);
+
+        // 3. si pidieron filtrar por un alojamiento concreto, validar que sea de él
         if (alojamientoId != null) {
             boolean pertenece = alojamientos.stream()
                     .anyMatch(a -> a.getId().equals(alojamientoId));
@@ -352,10 +357,21 @@ public class AnfitrionController {
                     .collect(Collectors.toList());
         }
 
+        // 4. traer reservas de TODOS esos alojamientos
         List<ReservaDTO> reservas = alojamientos.stream()
                 .flatMap(aloj -> reservaService.findByAlojamientoId(aloj.getId()).stream())
                 .collect(Collectors.toList());
 
+        // 5. map idAlojamiento -> título, para ponerlo en cada reserva
+        Map<Long, String> mapaTitulos = alojamientos.stream()
+                .collect(Collectors.toMap(AlojamientoDTO::getId, AlojamientoDTO::getTitulo));
+
+        reservas.forEach(r -> {
+            String titulo = mapaTitulos.get(r.getAlojamientoId());
+            r.setAlojamientoTitulo(titulo);
+        });
+
+        // 6. filtros en memoria
         if (estado != null && !estado.trim().isEmpty()) {
             EstadoReserva estadoFiltro;
             try {
@@ -381,6 +397,7 @@ public class AnfitrionController {
                     .collect(Collectors.toList());
         }
 
+        // 7. orden
         Comparator<ReservaDTO> comparator;
         String sortField = sortBy == null ? "" : sortBy.trim().toLowerCase();
         switch (sortField) {
@@ -412,12 +429,15 @@ public class AnfitrionController {
 
         reservas.sort(comparator);
 
+        // 8. paginar
         int total = reservas.size();
         int fromIndex = Math.min(page * size, total);
         int toIndex = Math.min(fromIndex + size, total);
         List<ReservaDTO> contenido = reservas.subList(fromIndex, toIndex);
 
-        Page<ReservaDTO> resultado = new PageImpl<>(contenido, PageRequest.of(page, size), total);
+        Page<ReservaDTO> resultado =
+                new PageImpl<>(contenido, PageRequest.of(page, size), total);
+
         return ResponseEntity.ok(resultado);
     }
 
@@ -431,8 +451,29 @@ public class AnfitrionController {
     public ResponseEntity<ReservaDTO> obtenerReserva(
             @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id,
             @Parameter(description = "ID de la reserva", example = "5") @PathVariable Long reservaId) {
-        return ResponseEntity.ok(null);
+
+        // 1. que exista el anfitrión
+        if (anfitrionService.findById(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // 2. que exista la reserva
+        Optional<ReservaDTO> reservaOpt = reservaService.findById(reservaId);
+        if (reservaOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        ReservaDTO reserva = reservaOpt.get();
+
+        // 3. verificar que el alojamiento de la reserva es del anfitrión
+        Optional<AlojamientoDTO> aloOpt = alojamientoService.findById(reserva.getAlojamientoId());
+        if (aloOpt.isEmpty() || !id.equals(aloOpt.get().getAnfitrionId())) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(reserva);
     }
+
 
     @PutMapping("/{id}/reservas/{reservaId}/aprobar")
     @Operation(summary = "Aprobar reserva", description = "El anfitrión aprueba una reserva pendiente")
@@ -567,8 +608,37 @@ public class AnfitrionController {
     public ResponseEntity<Page<ReservaDTO>> obtenerReservasPendientes(
             @Parameter(description = "ID del anfitrión", example = "1") @PathVariable Long id,
             @Parameter(description = "Número de página", example = "0") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Tamaño de página", example = "10") @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(null);
+            @Parameter(description = "Tamaño de página", example = "10") @RequestParam(defaultValue = "10") int size
+    ) {
+        if (page < 0 || size <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        // validar anfitrión
+        if (anfitrionService.findById(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // alojamientos del anfitrión
+        List<AlojamientoDTO> alojamientos = alojamientoService.findByHost(id);
+
+        // reservas de esos alojamientos, solo PENDIENTE
+        List<ReservaDTO> pendientes = alojamientos.stream()
+                .flatMap(a -> reservaService.findByAlojamientoId(a.getId()).stream())
+                .filter(r -> r.getEstado() == EstadoReserva.PENDIENTE)
+                .sorted(Comparator.comparing(
+                        ReservaDTO::getFechaInicio,
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                ).reversed())
+                .collect(Collectors.toList());
+
+        int total = pendientes.size();
+        int from = Math.min(page * size, total);
+        int to = Math.min(from + size, total);
+        List<ReservaDTO> contenido = pendientes.subList(from, to);
+
+        Page<ReservaDTO> res = new PageImpl<>(contenido, PageRequest.of(page, size), total);
+        return ResponseEntity.ok(res);
     }
 
     // ---------------- Gestión de Comentarios ----------------

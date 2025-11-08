@@ -1,5 +1,6 @@
 package com.Rently.Business.DTO.Auth;
 
+import com.Rently.Persistence.Entity.Rol;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,5 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AuthResponse {
-    String token;
-}
+        private String token;
+        private String nombre;
+        private Rol rol;
+    }

@@ -30,8 +30,8 @@ private final ReservaService reservaService;
 
     @PostMapping
     public ResponseEntity<ReservaDTO> create(@RequestBody ReservaDTO dto) {
-        return ResponseEntity.ok(reservaService.create(dto));
-    }
+        ReservaDTO creada = reservaService.create(dto);
+        return ResponseEntity.ok(creada);    }
 
     @GetMapping("/{id}")
     public ResponseEntity<ReservaDTO> getById(@PathVariable Long id) {

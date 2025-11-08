@@ -5,8 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.lang.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,67 +16,47 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-
-    @Lazy
     private final UserDetailsService userDetailsService;
-
 
     @Override
     protected void doFilterInternal(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
     ) throws ServletException, IOException {
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
 
+        final String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
+        final String jwt = authHeader.substring(7);
+
         try {
-            jwt = authHeader.substring(7);
-            userEmail = jwtService.extractUsername(jwt);
-        } catch (Exception ex) {
-            filterChain.doFilter(request, response);
-            return;
+            final String userEmail = jwtService.extractUsername(jwt);
+
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+
+        } catch (Exception e) {
+            log.warn("Error validando JWT: {}", e.getMessage());
         }
 
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails;
-            try {
-                userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-            } catch (Exception ex) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
-        }
         filterChain.doFilter(request, response);
     }
-
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String p = request.getServletPath();
-        // ajusta si tu prefix cambia
-        return p.startsWith("/api/auth/password/") || p.startsWith("/__debug/");
-    }
-
 }

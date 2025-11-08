@@ -34,10 +34,10 @@ public class FotoPerfilServiceImpl implements FotoPerfilService {
         ImageService.Upload up = imageService.uploadImage(file, "perfiles", "persona_" + personaId);
 
         // Persistir URL
-        p.setFotoPerfil(up.url());
+        p.setFotoPerfil(up.getUrl());
         personaRepository.save(p);
 
-        return up.url();
+        return up.getUrl();
     }
 
     @Override

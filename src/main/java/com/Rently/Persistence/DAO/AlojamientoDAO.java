@@ -118,5 +118,9 @@ public class AlojamientoDAO {
             return true;
         }).orElse(false);
     }
+
+    public Optional<Alojamiento> buscarEntidadPorId(Long alojamientoId) {
+        return alojamientoRepository.findById(alojamientoId);
+    }
 }
 

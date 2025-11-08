@@ -28,8 +28,7 @@ public class AlojamientoImagen {
 
     public AlojamientoImagen() {}
 
-    public AlojamientoImagen(Long id, String url, int orden, Alojamiento alojamiento) {
-        this.id = id;
+    public AlojamientoImagen(String url, int orden, Alojamiento alojamiento) {
         this.url = url;
         this.orden = orden;
         this.alojamiento = alojamiento;

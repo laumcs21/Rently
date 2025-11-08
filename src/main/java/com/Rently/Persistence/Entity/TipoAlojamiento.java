@@ -3,5 +3,6 @@ package com.Rently.Persistence.Entity;
 public enum TipoAlojamiento {
     CASA,
     APARTAMENTO,
-    FINCA
+    FINCA,
+    OTRO
 }

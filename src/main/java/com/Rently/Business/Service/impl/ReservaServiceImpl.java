@@ -94,8 +94,25 @@ public class ReservaServiceImpl implements ReservaService {
 
     @Override
     public ReservaDTO create(ReservaDTO reservaDTO) {
+        // 1. quién está logueado
+        Persona actorActual = getPersonaActual();
+
+        // 2. si el front no mandó usuarioId, lo ponemos nosotros
+        if (reservaDTO.getUsuarioId() == null || reservaDTO.getUsuarioId() <= 0) {
+            if (actorActual instanceof Usuario u) {
+                reservaDTO.setUsuarioId(u.getId());
+            } else if (actorActual instanceof Anfitrion a) {
+                // si permites que el anfitrión también reserve
+                reservaDTO.setUsuarioId(a.getId());
+            } else {
+                throw new RuntimeException("No se pudo determinar el usuario de la reserva.");
+            }
+        }
+
+        // 3. ahora sí podemos validar todo
         validateReservaData(reservaDTO);
 
+        // 4. validar que el usuario existe y está activo
         var usuarioOpt = usuarioDAO.buscarPorId(reservaDTO.getUsuarioId());
         if (usuarioOpt.isEmpty()) {
             throw new RuntimeException("El usuario con ID " + reservaDTO.getUsuarioId() + " no existe.");
@@ -104,6 +121,7 @@ public class ReservaServiceImpl implements ReservaService {
             throw new RuntimeException("El usuario no está activo y no puede reservar.");
         }
 
+        // 5. validar alojamiento
         var alojamientoOpt = alojamientoDAO.buscarPorId(reservaDTO.getAlojamientoId());
         if (alojamientoOpt.isEmpty()) {
             throw new RuntimeException("El alojamiento con ID " + reservaDTO.getAlojamientoId() + " no existe.");
@@ -112,16 +130,7 @@ public class ReservaServiceImpl implements ReservaService {
             throw new RuntimeException("El alojamiento no está disponible para reservas.");
         }
 
-        Persona actorActual = getPersonaActual();
-
-        // Validar permisos: Usuario solo puede crear para sí mismo
-        if (actorActual instanceof Usuario usuarioActual) {
-            if (!usuarioActual.getId().equals(reservaDTO.getUsuarioId())) {
-                throw new RuntimeException("No puede crear reservas en nombre de otro usuario.");
-            }
-        }
-        // Admin y anfitrion pueden crear reservas para cualquier usuario
-
+        // 6. validar solapamiento de fechas
         List<ReservaDTO> reservas = reservaDAO.listarPorAlojamiento(reservaDTO.getAlojamientoId());
         boolean solapada = reservas.stream().anyMatch(r ->
                 fechasSeSolapan(reservaDTO.getFechaInicio(), reservaDTO.getFechaFin(),
@@ -133,9 +142,13 @@ public class ReservaServiceImpl implements ReservaService {
             throw new RuntimeException("Ya existe una reserva activa en ese rango de fechas.");
         }
 
+        // 7. setear estado inicial
         reservaDTO.setEstado(EstadoReserva.PENDIENTE);
+
+        // 8. guardar
         return reservaDAO.crear(reservaDTO);
     }
+
 
     @Override
     public Optional<ReservaDTO> findById(Long id) {

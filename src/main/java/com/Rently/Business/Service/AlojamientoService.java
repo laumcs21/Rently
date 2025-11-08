@@ -1,7 +1,10 @@
 package com.Rently.Business.Service;
 
 import com.Rently.Business.DTO.AlojamientoDTO;
+import com.Rently.Business.DTO.ListingCardDTO;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.awt.print.Pageable;
 import java.util.List;
 import java.util.Optional;
 
@@ -80,4 +83,11 @@ public interface AlojamientoService {
      * @return true si el alojamiento fue eliminado, false en caso contrario
      */
     boolean delete(Long id);
-}
+
+    List<ListingCardDTO> getFeaturedRandom(Double precioMax, List<String> servicios, Integer limit);
+
+    void agregarImagen(Long alojamientoId, String urlImagen);
+
+    void eliminarImagen(Long alojamientoId, String url);
+
+    }

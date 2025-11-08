@@ -3,6 +3,10 @@ package com.Rently.Business.Service.impl;
 import com.Rently.Business.DTO.AnfitrionDTO;
 import com.Rently.Business.Service.AnfitrionService;
 import com.Rently.Persistence.DAO.AnfitrionDAO;
+import com.Rently.Persistence.Entity.Anfitrion;
+import com.Rently.Persistence.Mapper.PersonaMapper;
+import com.Rently.Persistence.Repository.AnfitrionRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +29,10 @@ import java.util.regex.Pattern;
 public class AnfitrionServiceImpl implements AnfitrionService {
 
     private final AnfitrionDAO anfitrionDAO;
+    private final AnfitrionRepository anfitrionRepository;
+    private final PersonaMapper personaMapper;
+    private final PasswordEncoder passwordEncoder;
+
 
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
@@ -33,18 +41,19 @@ public class AnfitrionServiceImpl implements AnfitrionService {
      * CREATE - Crear nuevo anfitrión
      */
     @Override
-    public AnfitrionDTO create(AnfitrionDTO anfitrionDTO) {
-        log.info("Creando anfitrión: {}", anfitrionDTO != null ? anfitrionDTO.getEmail() : "null");
+    public AnfitrionDTO create(AnfitrionDTO dto) {
+        if (dto == null) throw new IllegalArgumentException("El DTO no puede ser nulo");
+        validateAnfitrionData(dto);
+        validateAge(dto);
 
-        if (anfitrionDTO == null) {
-            throw new IllegalArgumentException("El DTO no puede ser nulo");
-        }
+        Anfitrion entity = personaMapper.dtoToAnfitrion(dto);
+        // 🔐 hash real que sí se guardará
+        entity.setContrasena(passwordEncoder.encode(dto.getContrasena()));
 
-        validateAnfitrionData(anfitrionDTO);
-        validateAge(anfitrionDTO);
-
-        return anfitrionDAO.crearAnfitrion(anfitrionDTO);
+        Anfitrion saved = anfitrionRepository.save(entity); // o tu DAO.crearAnfitrion(entity)
+        return personaMapper.anfitrionToDTO(saved);
     }
+
 
     /**
      * READ - Buscar anfitrión por ID
