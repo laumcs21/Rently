@@ -55,3 +55,12 @@ target/
 .idea/
 *.iml
 .vscode/
+
+# Ignorar datos locales de MySQL
+deploy/mysql/data/
+
+# Otros archivos que no deben subirse
+*.log
+target/
+.idea/
+.DS_Store
