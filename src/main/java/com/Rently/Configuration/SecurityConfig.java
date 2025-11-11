@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;   // 👈 agrega esto
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -24,9 +25,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Collections;
 import java.util.List;
@@ -51,15 +49,12 @@ public class SecurityConfig {
                 usuarioRepository.findByEmail(username).<UserDetails>map(u ->
                                 new User(u.getEmail(), u.getContrasena(),
                                         Collections.singleton(new SimpleGrantedAuthority("ROLE_" + u.getRol().name()))))
-
                         .orElseGet(() -> anfitrionRepository.findByEmail(username).<UserDetails>map(a ->
                                         new User(a.getEmail(), a.getContrasena(),
                                                 Collections.singleton(new SimpleGrantedAuthority("ROLE_" + a.getRol().name()))))
-
                                 .orElseGet(() -> administradorRepository.findByEmail(username).<UserDetails>map(ad ->
                                                 new User(ad.getEmail(), ad.getContrasena(),
                                                         Collections.singleton(new SimpleGrantedAuthority("ROLE_" + ad.getRol().name()))))
-
                                         .orElseThrow(() -> new UsernameNotFoundException("No existe cuenta con email: " + username))));
     }
 
@@ -85,7 +80,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOrigins(List.of("http://localhost:4200"));
+                    corsConfig.setAllowedOriginPatterns(List.of("*"));
                     corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     corsConfig.setAllowedHeaders(List.of("*"));
                     corsConfig.setAllowCredentials(true);
@@ -93,7 +88,11 @@ public class SecurityConfig {
                 }))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/alojamientos/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/error").permitAll()               // 👈 ESTA ES LA CLAVE
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/alojamientos/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -102,4 +101,6 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 }
+

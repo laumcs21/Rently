@@ -1,0 +1,35 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: rently-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 0108lomejor
+      MYSQL_DATABASE: rently
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+
+  backend:
+    image: rently-back
+    container_name: rently-back
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://rently-mysql:3306/rently
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 0108lomejor
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ../../../RentlyFront/inicio
+      dockerfile: Dockerfile
+    image: rently-front
+    container_name: rently-front
+    depends_on:
+      - backend
+    ports:
+      - "4200:80"
