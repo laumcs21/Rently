@@ -83,6 +83,7 @@ public class SecurityConfig {
                     corsConfig.setAllowedOriginPatterns(List.of("*"));
                     corsConfig.setAllowedOrigins(List.of(
                             "https://rently-front.onrender.com",
+                            "https://rently-back.onrender.com",
                             "http://localhost:3000"
                     ));
                     corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
