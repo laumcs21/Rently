@@ -80,10 +80,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOriginPatterns(List.of("*"));
                     corsConfig.setAllowedOrigins(List.of(
                             "https://rently-front.onrender.com",
-                            "https://rently-back.onrender.com",
                             "http://localhost:3000"
                     ));
                     corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
